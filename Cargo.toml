@@ -1,0 +1,10 @@
+[package]
+name = "meteoritus"
+version = "0.0.0"
+edition = "2021"
+authors = ["Kalleby Santos"]
+categories = ["web-programming", "filesystem"]
+keywords = ["rocket", "tus", "file-upload", "resumable-file-upload"]
+
+[dependencies]
+rocket = "0.5.0-rc.2"
