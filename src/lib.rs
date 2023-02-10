@@ -1,14 +1,9 @@
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
-}
+use rocket::fairing::Fairing;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+struct Meteoritus {}
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+impl Fairing for Meteoritus {
+    fn info(&self) -> rocket::fairing::Info {
+        todo!()
     }
 }
