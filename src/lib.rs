@@ -6,8 +6,30 @@ use rocket::{
     Build, Rocket,
 };
 
-#[derive(Default, Clone)]
-pub struct Meteoritus {}
+#[derive(Clone)]
+pub struct Meteoritus {
+    base: &'static str,
+}
+
+impl Meteoritus {
+    pub fn new() -> Self {
+        Meteoritus::default()
+    }
+
+    pub fn with_base(&mut self, base: &'static str) -> Self {
+        self.base = base;
+
+        self.to_owned()
+    }
+}
+
+impl Default for Meteoritus {
+    fn default() -> Self {
+        Self {
+            base: "/meteoritus",
+        }
+    }
+}
 
 #[rocket::async_trait]
 impl Fairing for Meteoritus {
@@ -26,7 +48,7 @@ impl Fairing for Meteoritus {
 
         let meteor_build = rocket
             .manage(self.clone())
-            .mount("/meteor", routes![hello_meteor]);
+            .mount(self.base, routes![hello_meteor]);
 
         Ok(meteor_build)
     }
