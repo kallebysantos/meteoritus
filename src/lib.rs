@@ -4,7 +4,9 @@
 extern crate rocket;
 
 use rocket::{
+    data::ByteUnit,
     fairing::{self, Fairing, Info, Kind},
+    http::Header,
     Build, Rocket,
 };
 use std::sync::Arc;
@@ -14,10 +16,20 @@ use handlers::{creation_handler, info_handler, termination_handler, upload_handl
 
 pub trait CometFn = Fn() + Send + Sync;
 
+#[derive(Clone)]
+pub struct Meteoritus {
+    base: &'static str,
+    max_size: ByteUnit,
+    on_creation: Option<Arc<dyn CometFn>>,
+    on_complete: Option<Arc<dyn CometFn>>,
+    on_termination: Option<Arc<dyn CometFn>>,
+}
+
 impl Default for Meteoritus {
     fn default() -> Self {
         Self {
             base: "/meteoritus",
+            max_size: ByteUnit::Megabyte(5),
             on_creation: None,
             on_complete: None,
             on_termination: None,
@@ -25,21 +37,34 @@ impl Default for Meteoritus {
     }
 }
 
-#[derive(Clone)]
-pub struct Meteoritus {
-    base: &'static str,
-    on_creation: Option<Arc<dyn CometFn>>,
-    on_complete: Option<Arc<dyn CometFn>>,
-    on_termination: Option<Arc<dyn CometFn>>,
-}
-
 impl Meteoritus {
     pub fn new() -> Self {
         Meteoritus::default()
     }
 
+    fn get_protocol_version() -> MeteoritusHeaders {
+        MeteoritusHeaders::Version(&["1.0.0"])
+    }
+
+    fn get_protocol_resumable_version() -> MeteoritusHeaders {
+        MeteoritusHeaders::Resumable("1.0.0")
+    }
+
+    fn get_protocol_extensions() -> MeteoritusHeaders {
+        MeteoritusHeaders::Extensions(&["creation", "expiration", "termination"])
+    }
+
+    fn get_protocol_max_size(&self) -> MeteoritusHeaders {
+        MeteoritusHeaders::MaxSize(self.max_size.as_u64())
+    }
+
     pub fn with_base(&mut self, base: &'static str) -> Self {
         self.base = base;
+        self.to_owned()
+    }
+
+    pub fn with_max_size(&mut self, size: ByteUnit) -> Self {
+        self.max_size = size;
         self.to_owned()
     }
 
@@ -77,5 +102,23 @@ impl Fairing for Meteoritus {
         ];
 
         Ok(rocket.manage(self.clone()).mount(self.base, routes))
+    }
+}
+
+enum MeteoritusHeaders {
+    MaxSize(u64),
+    Extensions(&'static [&'static str]),
+    Version(&'static [&'static str]),
+    Resumable(&'static str),
+}
+
+impl Into<Header<'_>> for MeteoritusHeaders {
+    fn into(self) -> Header<'static> {
+        match self {
+            MeteoritusHeaders::MaxSize(size) => Header::new("Tus-Max-Size", size.to_string()),
+            MeteoritusHeaders::Extensions(ext) => Header::new("Tus-Extension", ext.join(",")),
+            MeteoritusHeaders::Version(ver) => Header::new("Tus-Version", ver.join(",")),
+            MeteoritusHeaders::Resumable(ver) => Header::new("Tus-Resumable", ver),
+        }
     }
 }
