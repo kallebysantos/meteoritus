@@ -5,6 +5,8 @@ use rocket::{
     Request, Response,
 };
 
+use crate::Meteoritus;
+
 #[options("/")]
 pub fn info_handler(_req: InfoRequest) -> InfoResponder {
     InfoResponder {}
@@ -32,11 +34,14 @@ impl<'r> FromRequest<'r> for InfoRequest<'_> {
 pub struct InfoResponder {}
 
 impl<'r> Responder<'r, 'static> for InfoResponder {
-    fn respond_to(self, _: &'r Request<'_>) -> rocket::response::Result<'static> {
+    fn respond_to(self, req: &'r Request<'_>) -> rocket::response::Result<'static> {
+        let meteoritus = req.rocket().state::<Meteoritus>().unwrap();
+
         Response::build()
-            .raw_header("Tus-Version", "1.0.0")
-            .raw_header("Tus-Max-Size", "5120")
-            .raw_header("Tus-Extension", "creation,expiration,termination")
+            .header(Meteoritus::get_protocol_resumable_version())
+            .header(Meteoritus::get_protocol_version())
+            .header(Meteoritus::get_protocol_extensions())
+            .header(Meteoritus::get_protocol_max_size(&meteoritus))
             .status(Status::NoContent)
             .ok()
     }
