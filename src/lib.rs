@@ -3,6 +3,10 @@
 #[macro_use]
 extern crate rocket;
 
+pub use comet_vault::CometFile;
+pub use comet_vault::CometVault;
+
+use comet_vault::MeteorVault;
 use rocket::{
     data::ByteUnit,
     fairing::{self, Fairing, Info, Kind},
@@ -11,6 +15,7 @@ use rocket::{
 };
 use std::sync::Arc;
 
+mod comet_vault;
 mod handlers;
 use handlers::{creation_handler, info_handler, termination_handler, upload_handler};
 
@@ -20,6 +25,7 @@ pub trait CometFn = Fn() + Send + Sync;
 pub struct Meteoritus {
     base: &'static str,
     max_size: ByteUnit,
+    vault: Arc<dyn CometVault>,
     on_creation: Option<Arc<dyn CometFn>>,
     on_complete: Option<Arc<dyn CometFn>>,
     on_termination: Option<Arc<dyn CometFn>>,
@@ -30,6 +36,7 @@ impl Default for Meteoritus {
         Self {
             base: "/meteoritus",
             max_size: ByteUnit::Megabyte(5),
+            vault: Arc::new(MeteorVault::new()),
             on_creation: None,
             on_complete: None,
             on_termination: None,
@@ -60,6 +67,11 @@ impl Meteoritus {
 
     pub fn with_base(&mut self, base: &'static str) -> Self {
         self.base = base;
+        self.to_owned()
+    }
+
+    pub fn with_vault<V: CometVault + 'static>(&mut self, vault: V) -> Self {
+        self.vault = Arc::new(vault);
         self.to_owned()
     }
 
@@ -101,7 +113,7 @@ impl Fairing for Meteoritus {
             upload_handler,
         ];
 
-        Ok(rocket.manage(self.clone()).mount(self.base, routes))
+        Ok(rocket.manage(self.to_owned()).mount(self.base, routes))
     }
 }
 
