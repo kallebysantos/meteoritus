@@ -1,4 +1,5 @@
 #![feature(trait_alias)]
+#![feature(file_create_new)]
 
 #[macro_use]
 extern crate rocket;
@@ -23,7 +24,7 @@ pub trait CometFn = Fn() + Send + Sync;
 
 #[derive(Clone)]
 pub struct Meteoritus {
-    base: &'static str,
+    base_route: &'static str,
     max_size: ByteUnit,
     vault: Arc<dyn CometVault>,
     on_creation: Option<Arc<dyn CometFn>>,
@@ -31,12 +32,17 @@ pub struct Meteoritus {
     on_termination: Option<Arc<dyn CometFn>>,
 }
 
+#[derive(Clone)]
+pub struct MeteoritusBuilder {
+    meteoritus: Meteoritus,
+}
+
 impl Default for Meteoritus {
     fn default() -> Self {
         Self {
-            base: "/meteoritus",
+            base_route: "/meteoritus",
             max_size: ByteUnit::Megabyte(5),
-            vault: Arc::new(MeteorVault::new()),
+            vault: Arc::new(MeteorVault::new("./tmp/files")),
             on_creation: None,
             on_complete: None,
             on_termination: None,
@@ -45,8 +51,10 @@ impl Default for Meteoritus {
 }
 
 impl Meteoritus {
-    pub fn new() -> Self {
-        Meteoritus::default()
+    pub fn new() -> MeteoritusBuilder {
+        MeteoritusBuilder {
+            meteoritus: Self::default(),
+        }
     }
 
     fn get_protocol_version() -> MeteoritusHeaders {
@@ -64,34 +72,44 @@ impl Meteoritus {
     fn get_protocol_max_size(&self) -> MeteoritusHeaders {
         MeteoritusHeaders::MaxSize(self.max_size.as_u64())
     }
+}
 
-    pub fn with_base(&mut self, base: &'static str) -> Self {
-        self.base = base;
+impl MeteoritusBuilder {
+    pub fn build(&self) -> Meteoritus {
+        self.meteoritus.to_owned()
+    }
+
+    pub fn mount_to(&mut self, base_route: &'static str) -> Self {
+        self.meteoritus.base_route = base_route;
         self.to_owned()
     }
 
+    pub fn with_temp_path(&mut self, temp_path: &'static str) -> Self {
+        self.with_vault(MeteorVault::new(temp_path))
+    }
+
     pub fn with_vault<V: CometVault + 'static>(&mut self, vault: V) -> Self {
-        self.vault = Arc::new(vault);
+        self.meteoritus.vault = Arc::new(vault);
         self.to_owned()
     }
 
     pub fn with_max_size(&mut self, size: ByteUnit) -> Self {
-        self.max_size = size;
+        self.meteoritus.max_size = size;
         self.to_owned()
     }
 
     pub fn on_creation<F: CometFn + 'static>(&mut self, callback: F) -> Self {
-        self.on_creation = Some(Arc::new(callback));
+        self.meteoritus.on_creation = Some(Arc::new(callback));
         self.to_owned()
     }
 
     pub fn on_complete<F: CometFn + 'static>(&mut self, callback: F) -> Self {
-        self.on_complete = Some(Arc::new(callback));
+        self.meteoritus.on_complete = Some(Arc::new(callback));
         self.to_owned()
     }
 
     pub fn on_termination<F: CometFn + 'static>(&mut self, callback: F) -> Self {
-        self.on_termination = Some(Arc::new(callback));
+        self.meteoritus.on_termination = Some(Arc::new(callback));
         self.to_owned()
     }
 }
@@ -113,7 +131,9 @@ impl Fairing for Meteoritus {
             upload_handler,
         ];
 
-        Ok(rocket.manage(self.to_owned()).mount(self.base, routes))
+        Ok(rocket
+            .manage(self.to_owned())
+            .mount(self.base_route, routes))
     }
 }
 
