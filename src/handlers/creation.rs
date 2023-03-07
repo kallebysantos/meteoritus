@@ -2,7 +2,7 @@ use rocket::{
     http::Status,
     request::{self, FromRequest, Outcome},
     response::{self, Responder},
-    Request, Response, State,
+    Orbit, Request, Response, Rocket, State,
 };
 use std::{collections::HashMap, io::Cursor};
 
@@ -23,21 +23,22 @@ pub fn creation_handler(req: CreationRequest, meteoritus: &State<Meteoritus>) ->
     let uri = format!("/files/{}", file.id());
 
     if let Some(callback) = &meteoritus.on_creation {
-        callback();
+        callback(&req.rocket);
     }
 
     CreationResponder::Success(uri)
 }
 
 #[derive(Debug)]
-pub struct CreationRequest {
+pub struct CreationRequest<'r> {
     // content_length: u64,
     upload_length: u64,
     metadata: Option<HashMap<String, String>>,
+    rocket: &'r Rocket<Orbit>,
 }
 
 #[rocket::async_trait]
-impl<'r> FromRequest<'r> for CreationRequest {
+impl<'r> FromRequest<'r> for CreationRequest<'r> {
     type Error = &'static str;
 
     async fn from_request(req: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
@@ -84,6 +85,7 @@ impl<'r> FromRequest<'r> for CreationRequest {
             // content_length,
             upload_length,
             metadata,
+            rocket: req.rocket(),
         };
 
         Outcome::Success(creation_values)

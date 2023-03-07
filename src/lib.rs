@@ -8,6 +8,7 @@ pub use comet_vault::CometFile;
 pub use comet_vault::CometVault;
 
 use comet_vault::MeteorVault;
+use rocket::Orbit;
 use rocket::{
     data::ByteUnit,
     fairing::{self, Fairing, Info, Kind},
@@ -27,7 +28,7 @@ pub struct Meteoritus {
     base_route: &'static str,
     max_size: ByteUnit,
     vault: Arc<dyn CometVault>,
-    on_creation: Option<Arc<dyn CometFn>>,
+    on_creation: Option<Arc<dyn Fn(&Rocket<Orbit>) + Send + Sync>>,
     on_complete: Option<Arc<dyn CometFn>>,
     on_termination: Option<Arc<dyn CometFn>>,
 }
@@ -98,7 +99,10 @@ impl MeteoritusBuilder {
         self.to_owned()
     }
 
-    pub fn on_creation<F: CometFn + 'static>(&mut self, callback: F) -> Self {
+    pub fn on_creation<F>(&mut self, callback: F) -> Self
+    where
+        F: Fn(&Rocket<Orbit>) + Send + Sync + 'static,
+    {
         self.meteoritus.on_creation = Some(Arc::new(callback));
         self.to_owned()
     }
