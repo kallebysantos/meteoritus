@@ -1,13 +1,15 @@
 use std::{
     collections::HashMap,
     fs::{self, File},
-    io::{Error, Write},
+    io::Error,
     path::Path,
 };
 
+use rocket::serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Serialize, Deserialize)]
+#[serde(crate = "rocket::serde")]
 pub struct CometFile {
     id: String,
     length: u64,
@@ -69,8 +71,6 @@ impl CometVault for MeteorVault {
     fn add(&self, file: &CometFile) -> Result<(), Error> {
         let file_dir = Path::new(self.save_path).join(&file.id);
 
-        println!("Hello {}", file_dir.exists());
-
         if !file_dir.exists() {
             fs::create_dir_all(&file_dir)?;
         }
@@ -78,17 +78,19 @@ impl CometVault for MeteorVault {
         let file_path = file_dir.join(&file.id);
         File::create_new(file_path)?.set_len(file.length)?;
 
-        let file_info_path = file_dir.join(&file.id).with_extension("json");
-        File::create_new(file_info_path)?.write_all(b"{\"values\": \"Hello World\"}")?;
+        let info_path = file_dir.join(&file.id).with_extension("json");
+
+        let mut info_file = File::create_new(&info_path)?;
+        serde_json::to_writer(&mut info_file, &file)?;
 
         Ok(())
     }
 
-    fn take(&self, id: String) -> Result<CometFile, Error> {
+    fn take(&self, _id: String) -> Result<CometFile, Error> {
         todo!()
     }
 
-    fn remove(&self, file: &CometFile) -> Result<(), Error> {
+    fn remove(&self, _file: &CometFile) -> Result<(), Error> {
         todo!()
     }
 }
