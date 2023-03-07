@@ -1,4 +1,9 @@
-use std::{collections::HashMap, io::Error};
+use std::{
+    collections::HashMap,
+    fs::{self, File},
+    io::{Error, Write},
+    path::Path,
+};
 
 use uuid::Uuid;
 
@@ -50,16 +55,32 @@ pub trait CometVault: Send + Sync {
     fn remove(&self, file: &CometFile) -> Result<(), Error>;
 }
 
-pub struct MeteorVault {}
+pub struct MeteorVault {
+    save_path: &'static str,
+}
 
 impl MeteorVault {
-    pub fn new() -> Self {
-        Self {}
+    pub fn new(save_path: &'static str) -> Self {
+        Self { save_path }
     }
 }
 
 impl CometVault for MeteorVault {
     fn add(&self, file: &CometFile) -> Result<(), Error> {
+        let file_dir = Path::new(self.save_path).join(&file.id);
+
+        println!("Hello {}", file_dir.exists());
+
+        if !file_dir.exists() {
+            fs::create_dir_all(&file_dir)?;
+        }
+
+        let file_path = file_dir.join(&file.id);
+        File::create_new(file_path)?.set_len(file.length)?;
+
+        let file_info_path = file_dir.join(&file.id).with_extension("json");
+        File::create_new(file_info_path)?.write_all(b"{\"values\": \"Hello World\"}")?;
+
         Ok(())
     }
 
