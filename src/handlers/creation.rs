@@ -1,11 +1,15 @@
 use rocket::{
-    http::Status,
+    http::{
+        uri::{Origin, Reference},
+        Status,
+    },
     request::{self, FromRequest, Outcome},
     response::{self, Responder},
     Orbit, Request, Response, Rocket, State,
 };
 use std::{collections::HashMap, io::Cursor};
 
+use crate::handlers::upload::*;
 use crate::{comet_vault::CometFile, Meteoritus};
 
 #[post("/")]
@@ -16,17 +20,27 @@ pub fn creation_handler(req: CreationRequest, meteoritus: &State<Meteoritus>) ->
         file.with_metadata(metadata);
     }
 
+    let base = match Origin::parse(meteoritus.base_route) {
+        Ok(base) => base,
+        Err(_) => {
+            return CreationResponder::Failure(Status::InternalServerError, "some error");
+        }
+    };
+
+    let uri = uri!(base, upload_handler(id = file.id()));
+    let mut uri: Reference = uri.into();
+
+    if let Some(callback) = &meteoritus.on_creation {
+        if let Err(error) = callback(req.rocket, &file, &mut uri) {
+            return CreationResponder::Failure(Status::UnprocessableEntity, error);
+        }
+    }
+
     if let Err(_) = meteoritus.vault.add(&file) {
         return CreationResponder::Failure(Status::InternalServerError, "some error");
     };
 
-    let uri = format!("/files/{}", file.id());
-
-    if let Some(callback) = &meteoritus.on_creation {
-        callback(&req.rocket);
-    }
-
-    CreationResponder::Success(uri)
+    CreationResponder::Success(uri.to_string())
 }
 
 #[derive(Debug)]
@@ -42,6 +56,8 @@ impl<'r> FromRequest<'r> for CreationRequest<'r> {
     type Error = &'static str;
 
     async fn from_request(req: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
+        println!("{:?}", req.host());
+
         let meteoritus = req.rocket().state::<Meteoritus>().unwrap();
 
         let tus_resumable_header = req.headers().get_one("Tus-Resumable");
