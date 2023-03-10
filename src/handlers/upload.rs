@@ -1,10 +1,8 @@
-use std::io::Cursor;
-
 use rocket::{
     http::{ContentType, Status},
     request::{self, FromRequest, Outcome},
     response::{self, Responder},
-    Orbit, Request, Response, Rocket, State,
+    Orbit, Request, Rocket, State,
 };
 
 use crate::Meteoritus;
@@ -15,6 +13,13 @@ pub fn upload_handler(
     id: &str,
     meteoritus: &State<Meteoritus>,
 ) -> UploadResponder {
+    let file = match meteoritus.vault.take(id.to_string()) {
+        Ok(file) => file,
+        Err(_) => return UploadResponder::Failure(Status::NotFound),
+    };
+
+    println!("{:?}", file);
+
     let is_upload_complete = true;
 
     if is_upload_complete {
@@ -81,16 +86,20 @@ impl<'r> FromRequest<'r> for UploadRequest<'r> {
 
 pub enum UploadResponder {
     Success(),
+    Failure(Status),
 }
 
 impl<'r> Responder<'r, 'static> for UploadResponder {
     fn respond_to(self, _req: &'r Request<'_>) -> response::Result<'static> {
-        match self {
+        let mut res = rocket::Response::build();
 
-            Self::Success() => Response::build()
-                .header(Meteoritus::get_protocol_resumable_version())
-                .status(Status::Created)
-                .ok(),
-        }
+        res.header(Meteoritus::get_protocol_resumable_version());
+
+        match self {
+            Self::Success() => res.status(Status::NoContent),
+            Self::Failure(status) => res.status(status),
+        };
+
+        res.ok()
     }
 }

@@ -1,14 +1,14 @@
 use std::{
     collections::HashMap,
     fs::{self, File},
-    io::Error,
+    io::{BufReader, Error, ErrorKind, Result},
     path::Path,
 };
 
 use rocket::serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Default, Clone, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
 #[serde(crate = "rocket::serde")]
 pub struct CometFile {
     id: String,
@@ -50,11 +50,13 @@ impl CometFile {
 }
 
 pub trait CometVault: Send + Sync {
-    fn add(&self, file: &CometFile) -> Result<(), Error>;
+    fn add(&self, file: &CometFile) -> Result<()>;
+
+    fn take(&self, id: String) -> Result<CometFile>;
 
     fn take(&self, id: String) -> Result<CometFile, Error>;
 
-    fn remove(&self, file: &CometFile) -> Result<(), Error>;
+    fn remove(&self, file: &CometFile) -> Result<()>;
 }
 
 pub struct MeteorVault {
@@ -68,7 +70,7 @@ impl MeteorVault {
 }
 
 impl CometVault for MeteorVault {
-    fn add(&self, file: &CometFile) -> Result<(), Error> {
+    fn add(&self, file: &CometFile) -> Result<()> {
         let file_dir = Path::new(self.save_path).join(&file.id);
 
         if !file_dir.exists() {
@@ -86,11 +88,20 @@ impl CometVault for MeteorVault {
         Ok(())
     }
 
-    fn take(&self, _id: String) -> Result<CometFile, Error> {
-        todo!()
+    fn take(&self, id: String) -> Result<CometFile> {
+        let file_dir = Path::new(self.save_path).join(&id);
+
+        let info_path = file_dir.join(&id).with_extension("json");
+
+        let file = File::open(info_path)?;
+        let reader = BufReader::new(file);
+
+        let info: CometFile = serde_json::from_reader(reader)?;
+
+        Ok(info)
     }
 
-    fn remove(&self, _file: &CometFile) -> Result<(), Error> {
+    fn remove(&self, _file: &CometFile) -> Result<()> {
         todo!()
     }
 }
