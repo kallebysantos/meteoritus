@@ -45,10 +45,9 @@ pub fn creation_handler(req: CreationRequest, meteoritus: &State<Meteoritus>) ->
 
 #[derive(Debug)]
 pub struct CreationRequest<'r> {
-    // content_length: u64,
     upload_length: u64,
-    metadata: Option<HashMap<String, String>>,
     rocket: &'r Rocket<Orbit>,
+    metadata: Option<HashMap<String, String>>,
 }
 
 #[rocket::async_trait]
@@ -56,8 +55,6 @@ impl<'r> FromRequest<'r> for CreationRequest<'r> {
     type Error = &'static str;
 
     async fn from_request(req: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
-        println!("{:?}", req.host());
-
         let meteoritus = req.rocket().state::<Meteoritus>().unwrap();
 
         let tus_resumable_header = req.headers().get_one("Tus-Resumable");
@@ -67,12 +64,6 @@ impl<'r> FromRequest<'r> for CreationRequest<'r> {
                 "Missing or invalid Tus-Resumable header",
             ));
         }
-
-        //let content_length =
-        match req.headers().get_one("Content-Length") {
-            Some(value) => value.parse().unwrap_or(0),
-            None => return Outcome::Failure((Status::BadRequest, "Missing Content-Length header")),
-        };
 
         let upload_length = match req.headers().get_one("Upload-Length") {
             Some(value) => match value.parse::<u64>() {
@@ -98,7 +89,6 @@ impl<'r> FromRequest<'r> for CreationRequest<'r> {
         };
 
         let creation_values = CreationRequest {
-            // content_length,
             upload_length,
             metadata,
             rocket: req.rocket(),
