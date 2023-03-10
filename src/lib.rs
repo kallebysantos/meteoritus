@@ -36,7 +36,7 @@ pub struct Meteoritus {
                 + Sync,
         >,
     >,
-    on_complete: Option<Arc<dyn CometFn>>,
+    on_complete: Option<Arc<dyn Fn(&Rocket<Orbit>) + Send + Sync>>,
     on_termination: Option<Arc<dyn CometFn>>,
 }
 
@@ -117,7 +117,10 @@ impl MeteoritusBuilder {
         self.to_owned()
     }
 
-    pub fn on_complete<F: CometFn + 'static>(&mut self, callback: F) -> Self {
+    pub fn on_complete<F>(&mut self, callback: F) -> Self
+    where
+        F: Fn(&Rocket<Orbit>) + Send + Sync + 'static,
+    {
         self.meteoritus.on_complete = Some(Arc::new(callback));
         self.to_owned()
     }
