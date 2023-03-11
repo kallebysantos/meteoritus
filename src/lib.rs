@@ -9,7 +9,9 @@ pub use comet_vault::CometVault;
 
 use comet_vault::MeteorVault;
 use handlers::file_info_handler;
+
 use rocket::http::uri::Reference;
+
 use rocket::Orbit;
 use rocket::{
     data::ByteUnit,
@@ -75,7 +77,7 @@ impl Meteoritus {
     }
 
     fn get_protocol_extensions() -> MeteoritusHeaders {
-        MeteoritusHeaders::Extensions(&["creation", "expiration", "termination"])
+        MeteoritusHeaders::Extensions(&["creation"])
     }
 
     fn get_protocol_max_size(&self) -> MeteoritusHeaders {

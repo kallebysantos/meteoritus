@@ -1,19 +1,18 @@
 use rocket::{
-    data::Capped,
     http::{ContentType, Status},
     request::{self, FromRequest, Outcome},
     response::{self, Responder},
-    Orbit, Request, Rocket, State,
+    Data, Orbit, Request, Rocket, State,
 };
 
 use crate::Meteoritus;
 
 #[patch("/<id>", data = "<data>")]
-pub fn upload_handler(
-    req: UploadRequest,
+pub async fn upload_handler(
+    req: UploadRequest<'_>,
     id: &str,
     meteoritus: &State<Meteoritus>,
-    mut data: Capped<Vec<u8>>,
+    data: Data<'_>,
 ) -> UploadResponder {
     let mut file = match meteoritus.vault.take(id.to_string()) {
         Ok(file) => file,
@@ -28,8 +27,10 @@ pub fn upload_handler(
         return UploadResponder::Failure(Status::PayloadTooLarge);
     };
 
-    if let Err(_) = meteoritus.vault.update(&mut file, &mut data) {
-        return UploadResponder::Failure(Status::UnprocessableEntity);
+    if let Ok(mut data) = data.open(meteoritus.max_size).into_bytes().await {
+        if let Err(_) = meteoritus.vault.update(&mut file, &mut data) {
+            return UploadResponder::Failure(Status::UnprocessableEntity);
+        };
     };
 
     let is_upload_complete = file.length() == file.offset();
@@ -55,8 +56,6 @@ impl<'r> FromRequest<'r> for UploadRequest<'r> {
     type Error = &'static str;
 
     async fn from_request(req: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
-        let _meteoritus = req.rocket().state::<Meteoritus>().unwrap();
-
         let tus_resumable_header = req.headers().get_one("Tus-Resumable");
         if tus_resumable_header.is_none() || tus_resumable_header.unwrap() != "1.0.0" {
             return Outcome::Failure((
