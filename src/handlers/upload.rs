@@ -1,4 +1,5 @@
 use rocket::{
+    data::Capped,
     http::{ContentType, Status},
     request::{self, FromRequest, Outcome},
     response::{self, Responder},
@@ -7,37 +8,46 @@ use rocket::{
 
 use crate::Meteoritus;
 
-#[patch("/<id>")]
+#[patch("/<id>", data = "<data>")]
 pub fn upload_handler(
     req: UploadRequest,
     id: &str,
     meteoritus: &State<Meteoritus>,
+    mut data: Capped<Vec<u8>>,
 ) -> UploadResponder {
-    let file = match meteoritus.vault.take(id.to_string()) {
+    let mut file = match meteoritus.vault.take(id.to_string()) {
         Ok(file) => file,
         Err(_) => return UploadResponder::Failure(Status::NotFound),
     };
 
-    println!("{:?}", file);
+    if file.offset() != &req.upload_offset {
+        return UploadResponder::Failure(Status::Conflict);
+    }
 
-    let is_upload_complete = true;
+    if let Err(_) = file.set_offset(req.upload_offset) {
+        return UploadResponder::Failure(Status::PayloadTooLarge);
+    };
+
+    if let Err(_) = meteoritus.vault.update(&mut file, &mut data) {
+        return UploadResponder::Failure(Status::UnprocessableEntity);
+    };
+
+    let is_upload_complete = file.length() == file.offset();
 
     if is_upload_complete {
         if let Some(callback) = &meteoritus.on_complete {
             callback(req.rocket);
         };
-        return UploadResponder::Success();
+        return UploadResponder::Success(*file.offset());
     }
 
-    // do patch update
-    println!("Patching {}", id);
-
-    UploadResponder::Success()
+    UploadResponder::Success(*file.offset())
 }
 
 #[derive(Debug)]
 pub struct UploadRequest<'r> {
     rocket: &'r Rocket<Orbit>,
+    upload_offset: u64,
 }
 
 #[rocket::async_trait]
@@ -55,7 +65,7 @@ impl<'r> FromRequest<'r> for UploadRequest<'r> {
             ));
         }
 
-        let _upload_offset = match req.headers().get_one("Upload-Offset") {
+        let upload_offset = match req.headers().get_one("Upload-Offset") {
             Some(value) => match value.parse::<u64>() {
                 Ok(value) => value,
                 Err(_) => {
@@ -78,6 +88,7 @@ impl<'r> FromRequest<'r> for UploadRequest<'r> {
 
         let upload_values = UploadRequest {
             rocket: req.rocket(),
+            upload_offset,
         };
 
         Outcome::Success(upload_values)
@@ -85,7 +96,7 @@ impl<'r> FromRequest<'r> for UploadRequest<'r> {
 }
 
 pub enum UploadResponder {
-    Success(),
+    Success(u64),
     Failure(Status),
 }
 
@@ -96,7 +107,10 @@ impl<'r> Responder<'r, 'static> for UploadResponder {
         res.header(Meteoritus::get_protocol_resumable_version());
 
         match self {
-            Self::Success() => res.status(Status::NoContent),
+            Self::Success(offset) => {
+                res.status(Status::NoContent);
+                res.raw_header("Upload-Offset", offset.to_string())
+            }
             Self::Failure(status) => res.status(status),
         };
 

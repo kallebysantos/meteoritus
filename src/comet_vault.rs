@@ -1,3 +1,4 @@
+use std::io::{prelude::*, SeekFrom};
 use std::{
     collections::HashMap,
     fs::{self, File},
@@ -13,6 +14,7 @@ use uuid::Uuid;
 pub struct CometFile {
     id: String,
     length: u64,
+    offset: u64,
     metadata: Option<HashMap<String, String>>,
 }
 
@@ -38,14 +40,30 @@ impl CometFile {
         self.to_owned()
     }
 
+    pub fn set_offset(&mut self, offset: u64) -> Result<()> {
+        if offset > self.length {
+            return Err(Error::from(ErrorKind::OutOfMemory));
+        }
+
+        self.offset = offset;
+
+        Ok(())
+    }
+
     pub fn id(&self) -> &str {
         &self.id
     }
+
     pub fn length(&self) -> &u64 {
         &self.length
     }
+
     pub fn metadata(&self) -> &Option<HashMap<String, String>> {
         &self.metadata
+    }
+
+    pub fn offset(&self) -> &u64 {
+        &self.offset
     }
 }
 
@@ -54,7 +72,7 @@ pub trait CometVault: Send + Sync {
 
     fn take(&self, id: String) -> Result<CometFile>;
 
-    fn take(&self, id: String) -> Result<CometFile, Error>;
+    fn update(&self, file: &mut CometFile, buf: &mut [u8]) -> Result<()>;
 
     fn remove(&self, file: &CometFile) -> Result<()>;
 }
@@ -99,6 +117,32 @@ impl CometVault for MeteorVault {
         let info: CometFile = serde_json::from_reader(reader)?;
 
         Ok(info)
+    }
+
+    fn update(&self, file: &mut CometFile, buf: &mut [u8]) -> Result<()> {
+        let file_dir = Path::new(self.save_path).join(&file.id);
+
+        let file_path = file_dir.join(&file.id);
+
+        let mut file_content = File::options().write(true).open(file_path)?;
+
+        file_content.seek(SeekFrom::Start(file.offset))?;
+
+        let written_bytes = file_content.write(buf)?;
+
+        if written_bytes >= u64::MAX as usize {
+            return Err(Error::from(ErrorKind::OutOfMemory));
+        }
+
+        file.set_offset(file.offset + written_bytes as u64)?;
+
+        let info_path = file_dir.join(&file.id).with_extension("json");
+
+        let mut file_info = File::options().write(true).open(info_path)?;
+
+        serde_json::to_writer(&mut file_info, &file)?;
+
+        Ok(())
     }
 
     fn remove(&self, _file: &CometFile) -> Result<()> {
