@@ -8,6 +8,7 @@ pub use comet_vault::CometFile;
 pub use comet_vault::CometVault;
 
 use comet_vault::MeteorVault;
+use handlers::file_info_handler;
 use rocket::http::uri::Reference;
 use rocket::Orbit;
 use rocket::{
@@ -144,6 +145,7 @@ impl Fairing for Meteoritus {
         let routes = routes![
             creation_handler,
             info_handler,
+            file_info_handler,
             termination_handler,
             upload_handler,
         ];
