@@ -1,14 +1,14 @@
 use rocket::{
     http::Status,
     response::{self, Responder},
-    Request, State,
+    Orbit, Request, State,
 };
 
-use crate::{CometFile, Meteoritus};
+use crate::{meteoritus::Meteoritus, CometFile};
 
 #[head("/<id>")]
-pub fn file_info_handler(id: &str, meteoritus: &State<Meteoritus>) -> FileInfoResponder {
-    match meteoritus.vault.take(id.to_string()) {
+pub fn file_info_handler(id: &str, meteoritus: &State<Meteoritus<Orbit>>) -> FileInfoResponder {
+    match meteoritus.vault().take(id.to_string()) {
         Ok(file) => FileInfoResponder::Success(file),
         Err(_) => FileInfoResponder::Failure(Status::NotFound),
     }
@@ -20,10 +20,12 @@ pub enum FileInfoResponder {
 }
 
 impl<'r> Responder<'r, 'static> for FileInfoResponder {
-    fn respond_to(self, _req: &'r Request<'_>) -> response::Result<'static> {
+    fn respond_to(self, req: &'r Request<'_>) -> response::Result<'static> {
+        let meteoritus = req.rocket().state::<Meteoritus<Orbit>>().unwrap();
+
         let mut res = rocket::Response::build();
 
-        res.header(Meteoritus::get_protocol_resumable_version());
+        res.header(meteoritus.get_protocol_resumable_version());
 
         match self {
             Self::Success(file) => {

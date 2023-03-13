@@ -10,17 +10,20 @@ use rocket::{
 use std::{collections::HashMap, io::Cursor};
 
 use crate::handlers::upload::*;
-use crate::{comet_vault::CometFile, Meteoritus};
+use crate::{comet_vault::CometFile, meteoritus::Meteoritus};
 
 #[post("/")]
-pub fn creation_handler(req: CreationRequest, meteoritus: &State<Meteoritus>) -> CreationResponder {
+pub fn creation_handler(
+    req: CreationRequest,
+    meteoritus: &State<Meteoritus<Orbit>>,
+) -> CreationResponder {
     let mut file = CometFile::new(req.upload_length).with_uuid();
 
     if let Some(metadata) = req.metadata {
         file.with_metadata(metadata);
     }
 
-    let base = match Origin::parse(meteoritus.base_route) {
+    let base = match Origin::parse(meteoritus.base_route()) {
         Ok(base) => base,
         Err(_) => {
             return CreationResponder::Failure(Status::InternalServerError, "some error");
@@ -30,13 +33,13 @@ pub fn creation_handler(req: CreationRequest, meteoritus: &State<Meteoritus>) ->
     let uri = uri!(base, upload_handler(id = file.id()));
     let mut uri: Reference = uri.into();
 
-    if let Some(callback) = &meteoritus.on_creation {
+    if let Some(callback) = &meteoritus.on_creation() {
         if let Err(error) = callback(req.rocket, &file, &mut uri) {
             return CreationResponder::Failure(Status::UnprocessableEntity, error);
         }
     }
 
-    if let Err(_) = meteoritus.vault.add(&file) {
+    if let Err(_) = meteoritus.vault().add(&file) {
         return CreationResponder::Failure(Status::InternalServerError, "some error");
     };
 
@@ -55,7 +58,7 @@ impl<'r> FromRequest<'r> for CreationRequest<'r> {
     type Error = &'static str;
 
     async fn from_request(req: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
-        let meteoritus = req.rocket().state::<Meteoritus>().unwrap();
+        let meteoritus = req.rocket().state::<Meteoritus<Orbit>>().unwrap();
 
         let tus_resumable_header = req.headers().get_one("Tus-Resumable");
         if tus_resumable_header.is_none() || tus_resumable_header.unwrap() != "1.0.0" {
@@ -75,7 +78,7 @@ impl<'r> FromRequest<'r> for CreationRequest<'r> {
             None => return Outcome::Failure((Status::BadRequest, "Missing Upload-Length header")),
         };
 
-        if upload_length > meteoritus.max_size.as_u64() {
+        if upload_length > meteoritus.max_size().as_u64() {
             return Outcome::Failure((
                 Status::PayloadTooLarge,
                 "Upload-Length exceeds the Tus-Max-Size",
@@ -104,7 +107,9 @@ pub enum CreationResponder {
 }
 
 impl<'r> Responder<'r, 'static> for CreationResponder {
-    fn respond_to(self, _req: &'r Request<'_>) -> response::Result<'static> {
+    fn respond_to(self, req: &'r Request<'_>) -> response::Result<'static> {
+        let meteoritus = req.rocket().state::<Meteoritus<Orbit>>().unwrap();
+
         match self {
             Self::Failure(status, error) => rocket::Response::build()
                 .status(status)
@@ -112,7 +117,7 @@ impl<'r> Responder<'r, 'static> for CreationResponder {
                 .ok(),
 
             Self::Success(uri) => Response::build()
-                .header(Meteoritus::get_protocol_resumable_version())
+                .header(meteoritus.get_protocol_resumable_version())
                 .raw_header("Location", uri)
                 .status(Status::Created)
                 .ok(),

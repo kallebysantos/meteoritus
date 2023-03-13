@@ -1,6 +1,6 @@
-use rocket::{http::Status, response::Responder, Request, Response};
+use rocket::{http::Status, response::Responder, Orbit, Request, Response};
 
-use crate::Meteoritus;
+use crate::meteoritus::Meteoritus;
 
 #[options("/")]
 pub fn info_handler() -> InfoResponder {
@@ -11,13 +11,13 @@ pub struct InfoResponder {}
 
 impl<'r> Responder<'r, 'static> for InfoResponder {
     fn respond_to(self, req: &'r Request<'_>) -> rocket::response::Result<'static> {
-        let meteoritus = req.rocket().state::<Meteoritus>().unwrap();
+        let meteoritus = req.rocket().state::<Meteoritus<Orbit>>().unwrap();
 
         Response::build()
-            .header(Meteoritus::get_protocol_resumable_version())
-            .header(Meteoritus::get_protocol_version())
-            .header(Meteoritus::get_protocol_extensions())
-            .header(Meteoritus::get_protocol_max_size(&meteoritus))
+            .header(meteoritus.get_protocol_resumable_version())
+            .header(meteoritus.get_protocol_version())
+            .header(meteoritus.get_protocol_extensions())
+            .header(meteoritus.get_protocol_max_size())
             .status(Status::NoContent)
             .ok()
     }

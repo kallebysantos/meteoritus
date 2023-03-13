@@ -11,10 +11,10 @@ use crate::Meteoritus;
 pub async fn upload_handler(
     req: UploadRequest<'_>,
     id: &str,
-    meteoritus: &State<Meteoritus>,
+    meteoritus: &State<Meteoritus<Orbit>>,
     data: Data<'_>,
 ) -> UploadResponder {
-    let mut file = match meteoritus.vault.take(id.to_string()) {
+    let mut file = match meteoritus.vault().take(id.to_string()) {
         Ok(file) => file,
         Err(_) => return UploadResponder::Failure(Status::NotFound),
     };
@@ -27,8 +27,8 @@ pub async fn upload_handler(
         return UploadResponder::Failure(Status::PayloadTooLarge);
     };
 
-    if let Ok(mut data) = data.open(meteoritus.max_size).into_bytes().await {
-        if let Err(_) = meteoritus.vault.update(&mut file, &mut data) {
+    if let Ok(mut data) = data.open(meteoritus.max_size()).into_bytes().await {
+        if let Err(_) = meteoritus.vault().update(&mut file, &mut data) {
             return UploadResponder::Failure(Status::UnprocessableEntity);
         };
     };
@@ -36,7 +36,7 @@ pub async fn upload_handler(
     let is_upload_complete = file.length() == file.offset();
 
     if is_upload_complete {
-        if let Some(callback) = &meteoritus.on_complete {
+        if let Some(callback) = &meteoritus.on_complete() {
             callback(req.rocket);
         };
         return UploadResponder::Success(*file.offset());
@@ -100,10 +100,12 @@ pub enum UploadResponder {
 }
 
 impl<'r> Responder<'r, 'static> for UploadResponder {
-    fn respond_to(self, _req: &'r Request<'_>) -> response::Result<'static> {
+    fn respond_to(self, req: &'r Request<'_>) -> response::Result<'static> {
+        let meteoritus = req.rocket().state::<Meteoritus<Orbit>>().unwrap();
+
         let mut res = rocket::Response::build();
 
-        res.header(Meteoritus::get_protocol_resumable_version());
+        res.header(meteoritus.get_protocol_resumable_version());
 
         match self {
             Self::Success(offset) => {
