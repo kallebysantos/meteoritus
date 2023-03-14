@@ -16,8 +16,8 @@ use crate::{comet_vault::MeteorVault, CometFile, CometVault, MeteoritusHeaders};
 ///
 /// # Phases
 ///
-/// A ` Meteoritus` instance represents a tus middleware and its state. It progresses
-/// through three statically-enforced phases: build, ignite, orbit.
+/// A [`Meteoritus`] instance represents a tus middleware and its state. It progresses
+/// through three statically-enforced phases: [`Build`], [`Ignite`], [`Orbit`].
 ///
 /// * **Build**: _middleware configuration_
 ///
@@ -47,12 +47,12 @@ use crate::{comet_vault::MeteorVault, CometFile, CometVault, MeteoritusHeaders};
 ///
 /// # Launching
 ///
-/// In order to launch a `Meteoritus` middleware an instance of `Meteoritus<Ignite>` _must_ be
+/// In order to launch a [`Meteoritus`] middleware an instance of [`Meteoritus<Ignite>`] _must_ be
 /// attached to [`Rocket`] server using [`rocket::Rocket::attach()`]:
 ///
 ///   ```rust,no_run
 ///   # #[macro_use] extern crate rocket;
-///   use meteoritus::{CometFile, CometVault, Meteoritus};
+///   use meteoritus::Meteoritus;
 ///
 ///   #[launch]
 ///   fn rocket() -> _ {
@@ -68,13 +68,12 @@ use crate::{comet_vault::MeteorVault, CometFile, CometVault, MeteoritusHeaders};
 ///
 /// * **Launching with custom options**
 ///
-/// Since `Meteoritus<Build>` implements the _builder pattern_ it exports public methods
-/// to customize the middleware behavior, like registering event callbacks and custom          
-/// configuration:
+/// Since [`Meteoritus<Build>`]implements the _builder pattern_ it exports public methods
+/// to customize the middleware behavior, like registering event callbacks and custom configuration:
 ///
 ///   ```rust,no_run
 ///   # #[macro_use] extern crate rocket;
-///   use meteoritus::{CometFile, CometVault, Meteoritus};
+///   use meteoritus::Meteoritus;
 ///
 ///   #[launch]
 ///   fn rocket() -> _ {
@@ -135,7 +134,7 @@ impl<P: Phase> Meteoritus<P> {
 }
 
 impl Meteoritus<Build> {
-    /// Returns a instance of `Meteoritus` into the _build_ phase.
+    /// Returns a instance of [`Meteoritus`] into the _[`Build`]_ phase.
     pub fn new() -> Meteoritus<Build> {
         Meteoritus::<Build> {
             base_route: "/meteoritus",
@@ -148,7 +147,7 @@ impl Meteoritus<Build> {
         }
     }
 
-    /// Returns a instance of `Meteoritus` into the _ignite_ phase.
+    /// Returns a instance of [`Meteoritus`] into the _[`Ignite`]_ phase.
     pub fn build(self) -> Meteoritus<Ignite> {
         Meteoritus::<Ignite> {
             state: std::marker::PhantomData,
@@ -174,7 +173,7 @@ impl Meteoritus<Build> {
     ///
     /// Manually create a route path mounted at base
     /// `"/api/files"`. Requests to the `/api/files` URI will be dispatched to the
-    /// `Meteoritus` middleware.
+    /// [`Meteoritus`] middleware.
     ///
     ///   ```rust,no_run
     ///   # #[macro_use] extern crate rocket;
@@ -189,7 +188,7 @@ impl Meteoritus<Build> {
     ///       rocket::build().attach(meteoritus)
     /// }
     /// ```
-    /// **Note:** `Meteoritus` will mount many tus protocol routes based on the specified path.
+    /// **Note:** [`Meteoritus`] will mount many tus protocol routes based on the specified path.
     pub fn mount_to(mut self, base_route: &'static str) -> Self {
         self.base_route = base_route;
         self
@@ -197,7 +196,7 @@ impl Meteoritus<Build> {
 
     /// Directory to store temporary files.
     ///
-    /// **Note:** If a custom [`CometVault`] has provided then the `Meteoritus` will ignore
+    /// **Note:** If a custom [`CometVault`] has provided then the [`Meteoritus`] will ignore
     /// the supplied `temp_path`.
     ///
     /// # Examples
@@ -223,7 +222,7 @@ impl Meteoritus<Build> {
 
     /// Overrides the default instance of [`CometVault`].
     ///
-    /// If a custom vault has provided then the `Meteoritus` will ignore the `with_temp_path()`
+    /// If a custom vault has provided then the [`Meteoritus`] will ignore the [`Meteoritus::with_temp_path()`]
     /// configuration. Since it assumes that all file system operations will be responsibility of
     /// the custom vault implementation.
     ///
@@ -330,7 +329,7 @@ impl Meteoritus<Build> {
 }
 
 impl Meteoritus<Ignite> {
-    /// Returns a instance of `Meteoritus` into the _orbit_ phase.
+    /// Returns a instance of [`Meteoritus`] into the _[`Orbit`]_ phase.
     pub fn launch(&self) -> Meteoritus<Orbit> {
         Meteoritus::<Orbit> {
             state: std::marker::PhantomData,
