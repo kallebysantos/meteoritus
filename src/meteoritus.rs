@@ -52,6 +52,7 @@ use crate::{comet_vault::MeteorVault, CometFile, CometVault, MeteoritusHeaders};
 ///
 ///   ```rust,no_run
 ///   # #[macro_use] extern crate rocket;
+///   use rocket::{Build, Ignite};
 ///   use meteoritus::Meteoritus;
 ///
 ///   #[launch]
@@ -73,7 +74,40 @@ use crate::{comet_vault::MeteorVault, CometFile, CometVault, MeteoritusHeaders};
 ///
 ///   ```rust,no_run
 ///   # #[macro_use] extern crate rocket;
+///   use rocket::{Build, Ignite, data::ByteUnit};
 ///   use meteoritus::Meteoritus;
+///  #
+///  # use std::io::Result;
+///  # use meteoritus::{CometVault, CometFile};
+///  # pub struct MyCustomVault {}
+///  #
+///  # impl MyCustomVault {
+///  #     pub fn new() -> Self {
+///  #         Self {}
+///  #     }
+///  # }
+///  #
+///  # impl CometVault for MyCustomVault {
+///  #     fn add(&self, file: &CometFile) -> Result<()> {
+///  #         // Save file information on some persistent storage
+///  #         todo!()
+///  #     }
+///  #
+///  #     fn take(&self, id: String) -> Result<CometFile> {
+///  #         // Get the file information from persistent storage
+///  #         todo!()
+///  #     }
+///  #
+///  #     fn remove(&self, file: &CometFile) -> Result<()> {
+///  #         // Remove file information and all data from persistent storage
+///  #         todo!()
+///  #     }
+///  #
+///  #     fn update(&self, file: &mut CometFile, buf: &mut [u8]) -> std::io::Result<()> {
+///  #         // Patch the file content based on current offset
+///  #         todo!()
+///  #     }
+///  # }
 ///
 ///   #[launch]
 ///   fn rocket() -> _ {
@@ -90,7 +124,7 @@ use crate::{comet_vault::MeteorVault, CometFile, CometVault, MeteoritusHeaders};
 ///           .on_complete(|rocket| {
 ///                println!("Upload complete!");
 ///            })
-///           .on_termination(|rocket| {
+///           .on_termination(||{
 ///                println!("File deleted!");
 ///            })
 ///           .build();
@@ -177,6 +211,7 @@ impl Meteoritus<Build> {
     ///
     ///   ```rust,no_run
     ///   # #[macro_use] extern crate rocket;
+    ///   use rocket::Ignite;
     ///   use meteoritus::{CometFile, CometVault, Meteoritus};
     ///
     ///   #[launch]
@@ -205,6 +240,7 @@ impl Meteoritus<Build> {
     ///
     ///   ```rust,no_run
     ///   # #[macro_use] extern crate rocket;
+    ///   use rocket::Ignite;
     ///   use meteoritus::Meteoritus;
     ///
     ///   #[launch]
@@ -230,6 +266,8 @@ impl Meteoritus<Build> {
     ///
     /// ```rust,no_run
     /// # #[macro_use] extern crate rocket;
+    /// use std::io::Result;
+    /// use rocket::Ignite;
     /// use meteoritus::{CometFile, CometVault, Meteoritus};
     ///
     /// pub struct MyCustomVault {}
@@ -283,7 +321,7 @@ impl Meteoritus<Build> {
     ///
     ///   ```rust,no_run
     ///   # #[macro_use] extern crate rocket;
-    ///   use rocket::data::ByteUnit
+    ///   use rocket::{Ignite, data::ByteUnit};
     ///   use meteoritus::Meteoritus;
     ///
     ///   #[launch]

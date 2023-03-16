@@ -39,6 +39,7 @@ pub async fn upload_handler(
         if let Some(callback) = &meteoritus.on_complete() {
             callback(req.rocket);
         };
+
         return UploadResponder::Success(*file.offset());
     }
 

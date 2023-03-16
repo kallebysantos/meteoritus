@@ -26,8 +26,7 @@
 //! Then attach [`Meteoritus`] to your [`Rocket`] server on launch:
 //!
 //! ```rust,no_run
-//! #[macro_use]
-//! extern crate rocket;
+//! #[macro_use] extern crate rocket;
 //! use rocket::data::ByteUnit;
 //! use meteoritus::Meteoritus;
 //!
@@ -68,10 +67,10 @@ extern crate rocket;
 use rocket::http::Header;
 
 mod meteoritus;
-pub use meteoritus::Meteoritus;
+pub use crate::meteoritus::Meteoritus;
 
 mod comet_vault;
-pub use comet_vault::{CometFile, CometVault};
+pub use crate::comet_vault::{CometFile, CometVault};
 
 mod handlers;
 
