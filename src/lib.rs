@@ -69,6 +69,7 @@ use rocket::http::Header;
 mod meteoritus;
 pub use crate::meteoritus::Meteoritus;
 
+mod fs;
 mod comet_vault;
 pub use crate::comet_vault::{CometFile, CometVault};
 
