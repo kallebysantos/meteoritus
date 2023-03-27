@@ -1,5 +1,5 @@
 use base64::Engine as _;
-use std::collections::HashMap;
+use std::{collections::HashMap, error::Error, fmt::Display};
 
 #[derive(Default)]
 pub struct Metadata(HashMap<String, String>);
@@ -9,6 +9,14 @@ pub enum MetadataError {
     InvalidKey,
     DecodeError(String),
     InvalidMetadataFormat,
+}
+
+impl Error for MetadataError {}
+
+impl Display for MetadataError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 impl Metadata {
