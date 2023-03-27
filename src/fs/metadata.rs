@@ -1,7 +1,9 @@
 use base64::Engine as _;
+use rocket::serde::{Deserialize, Serialize};
 use std::{collections::HashMap, error::Error, fmt::Display};
 
-#[derive(Default)]
+#[derive(Default, Serialize, Deserialize)]
+#[serde(crate = "rocket::serde")]
 pub struct Metadata(HashMap<String, String>);
 
 #[derive(Debug, PartialEq)]
