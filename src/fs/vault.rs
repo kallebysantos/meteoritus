@@ -19,3 +19,13 @@ pub trait Vault: Send + Sync {
 
     fn create_file(&self, file: FileInfo<Built>) -> Result<FileInfo<Created>, VaultError>;
 }
+
+pub struct LocalVault {
+    save_path: &'static str,
+}
+
+impl LocalVault {
+    pub fn new(save_path: &'static str) -> Self {
+        Self { save_path }
+    }
+}
