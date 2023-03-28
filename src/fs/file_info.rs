@@ -11,10 +11,10 @@ use std::{
 pub struct Building;
 
 #[derive(Default)]
-pub struct Created;
+pub struct Built;
 
 #[derive(Default)]
-pub struct Uploading;
+pub struct Created;
 
 #[derive(Default)]
 pub struct Completed;
@@ -23,10 +23,12 @@ pub struct Completed;
 #[serde(crate = "rocket::serde")]
 pub struct FileInfo<State = Building> {
     id: String,
-    filename: String,
+    file_name: String,
     length: u64,
     offset: u64,
     metadata: Option<Metadata>,
+
+    #[serde(skip)]
     state: PhantomData<State>,
 }
 
@@ -35,8 +37,8 @@ impl<State> FileInfo<State> {
         &self.id
     }
 
-    pub fn filename(&self) -> &String {
-        &self.filename
+    pub fn file_name(&self) -> &String {
+        &self.file_name
     }
 
     pub fn length(&self) -> &u64 {
@@ -48,7 +50,7 @@ impl<State> FileInfo<State> {
     }
 }
 
-impl FileInfo {
+impl FileInfo<Building> {
     pub fn new(length: u64) -> Self {
         Self {
             length,
@@ -70,15 +72,25 @@ impl FileInfo {
         self
     }
 
-    pub fn build(self) -> FileInfo<Created> {
-        FileInfo::<Created> {
+    pub fn build(self) -> FileInfo<Built> {
+        FileInfo::<Built> {
             state: std::marker::PhantomData,
             ..self
         }
     }
 }
 
-impl FileInfo<Uploading> {
+impl FileInfo<Built> {
+    pub fn mark_as_created(self, file_name: &str) -> FileInfo<Created> {
+        FileInfo::<Created> {
+            file_name: file_name.to_string(),
+            state: std::marker::PhantomData,
+            ..self
+        }
+    }
+}
+
+impl FileInfo<Created> {
     pub fn offset(&self) -> &u64 {
         &self.offset
     }
