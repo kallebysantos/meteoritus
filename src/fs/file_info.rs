@@ -81,7 +81,7 @@ impl FileInfo<Building> {
 }
 
 impl FileInfo<Built> {
-    pub fn mark_as_created(self, file_name: &str) -> FileInfo<Created> {
+    pub(super) fn mark_as_created(self, file_name: &str) -> FileInfo<Created> {
         FileInfo::<Created> {
             file_name: file_name.to_string(),
             state: std::marker::PhantomData,
