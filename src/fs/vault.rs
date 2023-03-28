@@ -22,7 +22,10 @@ pub trait Vault: Send + Sync {
         metadata: Option<&str>,
     ) -> Result<FileInfo<Built>, VaultError>;
 
-    fn create_file(&self, file: FileInfo<Built>) -> Result<FileInfo<Created>, VaultError>;
+    fn create_file(
+        &self,
+        file: FileInfo<Built>,
+    ) -> Result<FileInfo<Created>, VaultError>;
 }
 
 pub struct LocalVault {
@@ -58,29 +61,37 @@ impl Vault for LocalVault {
         Ok(file_info)
     }
 
-    fn create_file(&self, file_info: FileInfo<Built>) -> Result<FileInfo<Created>, VaultError> {
+    fn create_file(
+        &self,
+        file_info: FileInfo<Built>,
+    ) -> Result<FileInfo<Created>, VaultError> {
         let file_dir = Path::new(self.save_path).join(&file_info.id());
 
         if !file_dir.exists() {
-            if let Err(e) = fs::create_dir_all(&file_dir) {
-                return Err(VaultError::CreationError(Box::new(e)));
+            if let Err(e) = fs::create_dir_all(&file_dir).map_err(|e| e.into())
+            {
+                return Err(VaultError::CreationError(e));
             };
         }
 
         /* Creating file for upload */
         if let Err(e) = match File::create_new(file_dir.join("file")) {
-            Ok(file) => file.set_len(*file_info.length()),
-            Err(e) => Err(e),
+            Ok(file) => file.set_len(*file_info.length()).map_err(|e| e.into()),
+            Err(e) => Err(e.into()),
         } {
-            return Err(VaultError::CreationError(Box::new(e)));
+            return Err(VaultError::CreationError(e));
         };
 
         /* Storing file info */
-        if let Err(Some(e)) = match File::create_new(file_dir.join("info").with_extension("json")) {
-            Ok(info) => serde_json::to_writer(info, &file_info).or_else(|e| Err(e.source())),
-            Err(e) => Err(e.source()),
-        } {
-            return Err(VaultError::CreationError(Box::new(e)));
+        if let Err(e) =
+            match File::create_new(file_dir.join("info").with_extension("json"))
+            {
+                Ok(info) => serde_json::to_writer(info, &file_info)
+                    .map_err(|e| e.into()),
+                Err(e) => Err(e.into()),
+            }
+        {
+            return Err(VaultError::CreationError(e));
         };
 
         /* Retrieving disk file_path as &str */
