@@ -7,7 +7,7 @@
 #![feature(trait_alias)]
 #![feature(file_create_new)]
 #![feature(type_changing_struct_update)]
-
+#![feature(io_error_more)]
 //!  # Meteoritus - API Documentation
 //!
 //! Hello, and welcome to the Meteoritus API documentation!
