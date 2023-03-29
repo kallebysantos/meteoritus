@@ -95,7 +95,7 @@ impl FileInfo<Created> {
         &self.offset
     }
 
-    pub fn set_offset(mut self, offset: u64) -> Result<()> {
+    pub(super) fn set_offset(mut self, offset: u64) -> Result<()> {
         if offset > self.length {
             return Err(Error::from(ErrorKind::OutOfMemory));
         }
@@ -105,7 +105,7 @@ impl FileInfo<Created> {
         Ok(())
     }
 
-    pub fn check_completion(self) -> Option<FileInfo<Completed>> {
+    pub(crate) fn check_completion(self) -> Option<FileInfo<Completed>> {
         if self.offset != self.length {
             return None;
         }
