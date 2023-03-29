@@ -1,7 +1,7 @@
 use std::{
     error::Error,
     fs::{self, File},
-    io::ErrorKind,
+    io::{BufReader, ErrorKind},
     path::Path,
 };
 
@@ -13,6 +13,7 @@ use super::{
 #[derive(Debug)]
 pub enum VaultError {
     CreationError(Box<dyn Error>),
+    ReadError(Box<dyn Error>),
 }
 
 pub trait Vault: Send + Sync {
@@ -25,6 +26,11 @@ pub trait Vault: Send + Sync {
     fn create_file(
         &self,
         file: FileInfo<Built>,
+    ) -> Result<FileInfo<Created>, VaultError>;
+
+    fn get_file(
+        &self,
+        file_id: String,
     ) -> Result<FileInfo<Created>, VaultError>;
 }
 
@@ -102,5 +108,24 @@ impl Vault for LocalVault {
         };
 
         Ok(file_info.mark_as_created(file_name))
+    }
+
+    fn get_file(
+        &self,
+        file_id: String,
+    ) -> Result<FileInfo<Created>, VaultError> {
+        let file_dir = Path::new(self.save_path).join(&file_id);
+
+        let info_path = file_dir.join("info").with_extension("json");
+
+        let file = match File::open(info_path) {
+            Ok(file) => file,
+            Err(e) => return Err(VaultError::CreationError(e.into())),
+        };
+
+        let reader = BufReader::new(file);
+
+        serde_json::from_reader(reader)
+            .map_err(|e| VaultError::ReadError(e.into()))
     }
 }
