@@ -1,19 +1,25 @@
 use std::{
     error::Error,
     fs::{self, File},
-    io::{BufReader, ErrorKind},
+    io::{BufReader, ErrorKind, Seek, SeekFrom, Write},
     path::Path,
 };
 
 use super::{
-    file_info::{Built, Created, FileInfo},
+    file_info::{Built, Completed, Created, FileInfo},
     metadata::Metadata,
 };
+
+pub enum PatchOption {
+    Patched(u64),
+    Completed(FileInfo<Completed>),
+}
 
 #[derive(Debug)]
 pub enum VaultError {
     CreationError(Box<dyn Error>),
     ReadError(Box<dyn Error>),
+    Error,
 }
 
 pub trait Vault: Send + Sync {
@@ -28,10 +34,16 @@ pub trait Vault: Send + Sync {
         file: FileInfo<Built>,
     ) -> Result<FileInfo<Created>, VaultError>;
 
-    fn get_file(
+    fn exists(&self, file_id: &str) -> bool;
+
+    fn get_file(&self, file_id: &str) -> Result<FileInfo<Created>, VaultError>;
+
+    fn patch_file(
         &self,
-        file_id: String,
-    ) -> Result<FileInfo<Created>, VaultError>;
+        file_id: &str,
+        buf: &mut [u8],
+        offset: u64,
+    ) -> Result<PatchOption, VaultError>;
 }
 
 pub struct LocalVault {
@@ -110,11 +122,16 @@ impl Vault for LocalVault {
         Ok(file_info.mark_as_created(file_name))
     }
 
-    fn get_file(
-        &self,
-        file_id: String,
-    ) -> Result<FileInfo<Created>, VaultError> {
-        let file_dir = Path::new(self.save_path).join(&file_id);
+    fn exists(&self, file_id: &str) -> bool {
+        let file_dir = Path::new(self.save_path).join(file_id);
+        let file_path = file_dir.join("file");
+        let file_info_path = file_dir.join("info").with_extension("json");
+
+        file_dir.exists() && file_path.exists() && file_info_path.exists()
+    }
+
+    fn get_file(&self, file_id: &str) -> Result<FileInfo<Created>, VaultError> {
+        let file_dir = Path::new(self.save_path).join(file_id);
 
         let info_path = file_dir.join("info").with_extension("json");
 
@@ -127,5 +144,48 @@ impl Vault for LocalVault {
 
         serde_json::from_reader(reader)
             .map_err(|e| VaultError::ReadError(e.into()))
+    }
+
+    fn patch_file(
+        &self,
+        file_id: &str,
+        buf: &mut [u8],
+        offset: u64,
+    ) -> Result<PatchOption, VaultError> {
+        let mut file = self.get_file(file_id)?;
+
+        if *file.offset() != offset {
+            return Err(VaultError::Error);
+        }
+
+        let file_dir = Path::new(self.save_path).join(file_id);
+
+        let file_path = file_dir.join("file");
+
+        let mut file_content =
+            File::options().write(true).open(file_path).unwrap();
+
+        file_content.seek(SeekFrom::Start(offset)).unwrap();
+
+        let written_bytes = file_content.write(buf).unwrap();
+
+        if written_bytes >= u64::MAX as usize {
+            return Err(VaultError::Error);
+        }
+
+        let offset = offset + written_bytes as u64;
+        file.set_offset(offset).unwrap();
+
+        let file_info_path = file_dir.join("info").with_extension("json");
+
+        let mut file_info =
+            File::options().write(true).open(file_info_path).unwrap();
+
+        serde_json::to_writer(&mut file_info, &file).unwrap();
+
+        match file.check_completion() {
+            Some(file) => Ok(PatchOption::Completed(file)),
+            None => Ok(PatchOption::Patched(offset)),
+        }
     }
 }

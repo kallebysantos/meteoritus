@@ -51,28 +51,28 @@ impl<State> FileInfo<State> {
 }
 
 impl FileInfo<Building> {
-    pub fn new(length: u64) -> Self {
+    pub(super) fn new(length: u64) -> Self {
         Self {
             length,
             ..Default::default()
         }
     }
 
-    pub fn with_uuid(self) -> Self {
+    pub(super) fn with_uuid(self) -> Self {
         self.with_raw_id(Uuid::new_v4().simple().to_string())
     }
 
-    pub fn with_raw_id(mut self, id: String) -> Self {
+    pub(super) fn with_raw_id(mut self, id: String) -> Self {
         self.id = id;
         self
     }
 
-    pub fn with_metadata(mut self, metadata: Metadata) -> Self {
+    pub(super) fn with_metadata(mut self, metadata: Metadata) -> Self {
         self.metadata = Some(metadata);
         self
     }
 
-    pub fn build(self) -> FileInfo<Built> {
+    pub(super) fn build(self) -> FileInfo<Built> {
         FileInfo::<Built> {
             state: std::marker::PhantomData,
             ..self
@@ -95,7 +95,7 @@ impl FileInfo<Created> {
         &self.offset
     }
 
-    pub(super) fn set_offset(mut self, offset: u64) -> Result<()> {
+    pub(super) fn set_offset(&mut self, offset: u64) -> Result<()> {
         if offset > self.length {
             return Err(Error::from(ErrorKind::OutOfMemory));
         }
