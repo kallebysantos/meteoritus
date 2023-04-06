@@ -1,21 +1,30 @@
+use std::sync::Arc;
+
 use rocket::{
     http::Status,
     response::{self, Responder},
     Orbit, Request, State,
 };
 
-use crate::{meteoritus::Meteoritus, CometFile};
+use crate::{
+    fs::{Created, FileInfo},
+    meteoritus::Meteoritus,
+    Vault,
+};
 
 #[head("/<id>")]
-pub fn file_info_handler(id: &str, meteoritus: &State<Meteoritus<Orbit>>) -> FileInfoResponder {
-    match meteoritus.vault().take(id.to_string()) {
+pub fn file_info_handler(
+    id: &str,
+    vault: &State<Arc<dyn Vault>>,
+) -> FileInfoResponder {
+    match vault.get_file(id) {
         Ok(file) => FileInfoResponder::Success(file),
         Err(_) => FileInfoResponder::Failure(Status::NotFound),
     }
 }
 
 pub enum FileInfoResponder {
-    Success(CometFile),
+    Success(FileInfo<Created>),
     Failure(Status),
 }
 

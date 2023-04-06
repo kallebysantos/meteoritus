@@ -7,61 +7,92 @@ use rocket::{
     response::{self, Responder},
     Orbit, Request, Response, Rocket, State,
 };
-use std::{collections::HashMap, io::Cursor};
+use std::{io::Cursor, sync::Arc};
 
-use crate::handlers::upload::*;
-use crate::{comet_vault::CometFile, meteoritus::Meteoritus};
+use crate::meteoritus::Meteoritus;
+use crate::{handlers::upload::*, Vault};
+
+use super::HandlerContext;
 
 #[post("/")]
 pub fn creation_handler(
     req: CreationRequest,
     meteoritus: &State<Meteoritus<Orbit>>,
+    vault: &State<Arc<dyn Vault>>,
 ) -> CreationResponder {
-    let mut file = CometFile::new(req.upload_length).with_uuid();
+    let file = match vault.build_file(req.upload_length, req.metadata) {
+        Ok(file) => file,
+        Err(_) => {
+            return CreationResponder::Failure(
+                Status::InternalServerError,
+                "creation error".to_string(),
+            )
+        }
+    };
 
-    if let Some(metadata) = req.metadata {
-        file.with_metadata(metadata);
-    }
-
-    let base = match Origin::parse(meteoritus.base_route()) {
+    let base_uri = match Origin::parse(meteoritus.base_route()) {
         Ok(base) => base,
         Err(_) => {
-            return CreationResponder::Failure(Status::InternalServerError, "some error");
+            return CreationResponder::Failure(
+                Status::InternalServerError,
+                "some error".to_string(),
+            );
         }
     };
 
-    let uri = uri!(base, upload_handler(id = file.id()));
-    let mut uri: Reference = uri.into();
+    let uri = uri!(base_uri, upload_handler(id = file.id()));
+    let uri: Reference = uri.into();
 
     if let Some(callback) = &meteoritus.on_creation() {
-        if let Err(error) = callback(req.rocket, &file, &mut uri) {
-            return CreationResponder::Failure(Status::UnprocessableEntity, error);
+        if let Err(error) = callback(HandlerContext {
+            rocket: req.rocket,
+            file_info: &file,
+        }) {
+            return CreationResponder::Failure(
+                Status::UnprocessableEntity,
+                error.to_string(),
+            );
         }
     }
 
-    if let Err(_) = meteoritus.vault().add(&file) {
-        return CreationResponder::Failure(Status::InternalServerError, "some error");
-    };
+    match vault.create_file(file) {
+        Ok(file) => {
+            if let Some(callback) = &meteoritus.on_created() {
+                callback(HandlerContext {
+                    rocket: req.rocket,
+                    file_info: &file,
+                });
+            }
 
-    CreationResponder::Success(uri.to_string())
+            CreationResponder::Success(uri.to_string())
+        }
+        Err(_) => CreationResponder::Failure(
+            Status::InternalServerError,
+            "some vault error".to_string(),
+        ),
+    }
 }
 
 #[derive(Debug)]
 pub struct CreationRequest<'r> {
-    upload_length: u64,
     rocket: &'r Rocket<Orbit>,
-    metadata: Option<HashMap<String, String>>,
+    upload_length: u64,
+    metadata: Option<&'r str>,
 }
 
 #[rocket::async_trait]
 impl<'r> FromRequest<'r> for CreationRequest<'r> {
     type Error = &'static str;
 
-    async fn from_request(req: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
+    async fn from_request(
+        req: &'r Request<'_>,
+    ) -> request::Outcome<Self, Self::Error> {
         let meteoritus = req.rocket().state::<Meteoritus<Orbit>>().unwrap();
 
         let tus_resumable_header = req.headers().get_one("Tus-Resumable");
-        if tus_resumable_header.is_none() || tus_resumable_header.unwrap() != "1.0.0" {
+        if tus_resumable_header.is_none()
+            || tus_resumable_header.unwrap() != "1.0.0"
+        {
             return Outcome::Failure((
                 Status::BadRequest,
                 "Missing or invalid Tus-Resumable header",
@@ -72,10 +103,18 @@ impl<'r> FromRequest<'r> for CreationRequest<'r> {
             Some(value) => match value.parse::<u64>() {
                 Ok(value) => value,
                 Err(_) => {
-                    return Outcome::Failure((Status::BadRequest, "Invalid Upload-Length header"))
+                    return Outcome::Failure((
+                        Status::BadRequest,
+                        "Invalid Upload-Length header",
+                    ))
                 }
             },
-            None => return Outcome::Failure((Status::BadRequest, "Missing Upload-Length header")),
+            None => {
+                return Outcome::Failure((
+                    Status::BadRequest,
+                    "Missing Upload-Length header",
+                ))
+            }
         };
 
         if upload_length > meteoritus.max_size().as_u64() {
@@ -88,13 +127,13 @@ impl<'r> FromRequest<'r> for CreationRequest<'r> {
         let metadata = match req.headers().get_one("Upload-Metadata") {
             None => None,
             Some(metadata) if metadata.is_empty() => None,
-            Some(metadata) => Some(parse_tus_metadata(metadata)),
+            Some(metadata) => Some(metadata),
         };
 
         let creation_values = CreationRequest {
+            rocket: req.rocket(),
             upload_length,
             metadata,
-            rocket: req.rocket(),
         };
 
         Outcome::Success(creation_values)
@@ -103,7 +142,7 @@ impl<'r> FromRequest<'r> for CreationRequest<'r> {
 
 pub enum CreationResponder {
     Success(String),
-    Failure(Status, &'static str),
+    Failure(Status, String),
 }
 
 impl<'r> Responder<'r, 'static> for CreationResponder {
@@ -123,22 +162,4 @@ impl<'r> Responder<'r, 'static> for CreationResponder {
                 .ok(),
         }
     }
-}
-
-fn parse_tus_metadata(metadata_str: &str) -> HashMap<String, String> {
-    let mut metadata_map = HashMap::new();
-
-    if !metadata_str.is_empty() {
-        for metadata_pair in metadata_str.split(',') {
-            if let Some(idx) = metadata_pair.find(' ') {
-                let (key, value) = metadata_pair.split_at(idx);
-                let key = key.trim().to_string();
-                let value = value.trim().to_string();
-
-                metadata_map.insert(key, value);
-            }
-        }
-    }
-
-    metadata_map
 }

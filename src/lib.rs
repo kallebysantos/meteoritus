@@ -41,13 +41,16 @@
 //!         .mount_to("/api/files")
 //!         .with_temp_path("./tmp/uploads")
 //!         .with_max_size(ByteUnit::Gibibyte(1))
-//!         .on_creation(|rocket, file, upload_uri| {
-//!              println!("File created: {:?}", file);
-//!              Ok(())
-//!          })
-//!         .on_complete(|rocket| {
-//!              println!("Upload complete!");
-//!          })
+//!           .on_creation(|ctx| {
+//!                 println!("on_creation: {:?}", ctx);
+//!                 Ok(())
+//!            })
+//!           .on_created(|ctx| {
+//!                 println!("on_created: {:?}", ctx);
+//!            })
+//!           .on_completed(|ctx| {
+//!                println!("on_completed: {:?}", ctx);
+//!            })
 //!         .build();
 //!
 //!     rocket::build()
@@ -70,10 +73,13 @@ mod meteoritus;
 pub use crate::meteoritus::Meteoritus;
 
 mod fs;
-mod comet_vault;
-pub use crate::comet_vault::{CometFile, CometVault};
+pub use crate::fs::{Built, Completed, Created, FileInfo, Metadata, Vault};
+
+/* mod comet_vault;
+pub use crate::comet_vault::{CometFile, CometVault}; */
 
 mod handlers;
+pub use crate::handlers::HandlerContext;
 
 pub trait CometFn = Fn() + Send + Sync;
 
@@ -87,10 +93,18 @@ pub enum MeteoritusHeaders {
 impl Into<Header<'_>> for MeteoritusHeaders {
     fn into(self) -> Header<'static> {
         match self {
-            MeteoritusHeaders::MaxSize(size) => Header::new("Tus-Max-Size", size.to_string()),
-            MeteoritusHeaders::Extensions(ext) => Header::new("Tus-Extension", ext.join(",")),
-            MeteoritusHeaders::Version(ver) => Header::new("Tus-Version", ver.join(",")),
-            MeteoritusHeaders::Resumable(ver) => Header::new("Tus-Resumable", ver),
+            MeteoritusHeaders::MaxSize(size) => {
+                Header::new("Tus-Max-Size", size.to_string())
+            }
+            MeteoritusHeaders::Extensions(ext) => {
+                Header::new("Tus-Extension", ext.join(","))
+            }
+            MeteoritusHeaders::Version(ver) => {
+                Header::new("Tus-Version", ver.join(","))
+            }
+            MeteoritusHeaders::Resumable(ver) => {
+                Header::new("Tus-Resumable", ver)
+            }
         }
     }
 }
