@@ -4,7 +4,6 @@
 #![doc(
     html_favicon_url = "https://github.com/kallebysantos/meteoritus/raw/main/assets/favicon.ico"
 )]
-#![feature(trait_alias)]
 #![feature(file_create_new)]
 #![feature(type_changing_struct_update)]
 #![feature(io_error_more)]
