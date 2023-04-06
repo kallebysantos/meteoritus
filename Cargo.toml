@@ -1,9 +1,15 @@
 [package]
 name = "meteoritus"
+description = "A tus server integration for Rocket framework."
 version = "0.1.0"
 edition = "2021"
 authors = ["Kalleby Santos"]
-categories = ["web-programming", "filesystem"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/kallebysantos/meteoritus"
+homepage = "https://github.com/kallebysantos/meteoritus"
+documentation = "https://docs.rs/meteoritus"
+readme = "./README.md"
+categories = ["web-programming", "filesystem", "http-server"]
 keywords = ["rocket", "tus", "file-upload", "resumable-file-upload"]
 
 [dependencies]
