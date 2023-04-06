@@ -22,6 +22,7 @@ pub enum VaultError {
     Error,
 }
 
+#[doc(hidden)]
 pub trait Vault: Send + Sync {
     fn build_file(
         &self,
