@@ -7,19 +7,19 @@ use std::{
     marker::PhantomData,
 };
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Building;
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Built;
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Created;
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Completed;
 
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Default, Debug, Serialize, Deserialize)]
 #[serde(crate = "rocket::serde")]
 pub struct FileInfo<State = Building> {
     id: String,
@@ -35,10 +35,6 @@ pub struct FileInfo<State = Building> {
 impl<State> FileInfo<State> {
     pub fn id(&self) -> &str {
         &self.id
-    }
-
-    pub fn file_name(&self) -> &String {
-        &self.file_name
     }
 
     pub fn length(&self) -> &u64 {
@@ -114,5 +110,11 @@ impl FileInfo<Created> {
             state: std::marker::PhantomData,
             ..self
         })
+    }
+}
+
+impl FileInfo<Completed> {
+    pub fn file_name(&self) -> &String {
+        &self.file_name
     }
 }
