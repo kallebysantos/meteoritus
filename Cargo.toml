@@ -10,7 +10,7 @@ homepage = "https://github.com/kallebysantos/meteoritus"
 documentation = "https://docs.rs/meteoritus"
 readme = "./README.md"
 categories = ["web-programming", "filesystem", "http-server"]
-keywords = ["rocket", "tus", "file-upload", "resumable-file-upload"]
+keywords = ["rocket", "tus", "file-upload", "resumable-upload"]
 
 [dependencies]
 rocket = "0.5.0-rc.2"
