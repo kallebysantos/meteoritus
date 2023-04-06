@@ -13,6 +13,10 @@ pub use upload::upload_handler;
 
 use crate::fs::FileInfo;
 
+/// Represents the context of a file upload handler.
+///
+/// It contains a reference to the [`Rocket`] instance and a reference to the [`FileInfo`] struct,
+/// which contains information about the uploaded file and its current state.
 #[derive(Debug)]
 pub struct HandlerContext<'a, S> {
     pub rocket: &'a Rocket<Orbit>,

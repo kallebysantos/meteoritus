@@ -85,6 +85,7 @@ pub use crate::handlers::HandlerContext;
 
 pub trait CometFn = Fn() + Send + Sync;
 
+/// Represents the tus protocol headers.
 pub enum MeteoritusHeaders {
     MaxSize(u64),
     Extensions(&'static [&'static str]),

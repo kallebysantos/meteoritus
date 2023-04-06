@@ -7,15 +7,19 @@ use std::{
     marker::PhantomData,
 };
 
+/// Indicates the [`FileInfo`] `Created` state.
 #[derive(Default, Debug)]
 pub struct Building;
 
+/// Indicates the [`FileInfo`] `Built` state.
 #[derive(Default, Debug)]
 pub struct Built;
 
+/// Indicates the [`FileInfo`] `Created` state.
 #[derive(Default, Debug)]
 pub struct Created;
 
+/// Indicates the [`FileInfo`] `Completed` state.
 #[derive(Default, Debug)]
 pub struct Completed;
 
