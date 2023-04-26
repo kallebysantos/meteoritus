@@ -19,6 +19,7 @@ pub enum PatchOption {
 pub enum VaultError {
     CreationError(Box<dyn Error>),
     ReadError(Box<dyn Error>),
+    TerminationError(Box<dyn Error>),
     Error,
 }
 
@@ -45,6 +46,8 @@ pub trait Vault: Send + Sync {
         buf: &mut [u8],
         offset: u64,
     ) -> Result<PatchOption, VaultError>;
+
+    fn terminate_file(&self, file_id: &str) -> Result<(), VaultError>;
 }
 
 pub struct LocalVault {
@@ -142,7 +145,7 @@ impl Vault for LocalVault {
 
         let file = match File::open(info_path) {
             Ok(file) => file,
-            Err(e) => return Err(VaultError::CreationError(e.into())),
+            Err(e) => return Err(VaultError::ReadError(e.into())),
         };
 
         let reader = BufReader::new(file);
@@ -192,5 +195,12 @@ impl Vault for LocalVault {
             Some(file) => Ok(PatchOption::Completed(file)),
             None => Ok(PatchOption::Patched(offset)),
         }
+    }
+
+    fn terminate_file(&self, file_id: &str) -> Result<(), VaultError> {
+        let file_dir = Path::new(self.save_path).join(file_id);
+
+        fs::remove_dir_all(file_dir)
+            .map_err(|e| VaultError::TerminationError(e.into()))
     }
 }
