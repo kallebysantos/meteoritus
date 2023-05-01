@@ -6,10 +6,12 @@ use rocket::{
     Build, Ignite, Orbit, Phase, Rocket,
 };
 
-use crate::handlers::{
-    creation_handler, file_info_handler,
-    info_handler, /* termination_handler, */
-    upload_handler,
+use crate::{
+    fs::Terminated,
+    handlers::{
+        creation_handler, file_info_handler, info_handler, termination_handler,
+        upload_handler,
+    },
 };
 
 #[allow(unused_imports)]
@@ -80,7 +82,7 @@ use crate::{
 ///   ```rust,no_run
 ///   # #[macro_use] extern crate rocket;
 ///   use rocket::{Build, Ignite, data::ByteUnit};
-///   use meteoritus::{Built, Completed, Created, HandlerContext, Meteoritus};
+///   use meteoritus::{Built, Completed, Created, Terminated, HandlerContext, Meteoritus};
 ///   # //
 ///   # // use std::io::Result;
 ///   # // use meteoritus::{Vault, CometFile};
@@ -131,9 +133,9 @@ use crate::{
 ///           .on_completed(|ctx: HandlerContext<Completed>| {
 ///                println!("on_completed: {:?}", ctx);
 ///            })
-///   # //        .on_termination(||{
-///   # //             println!("File deleted!");
-///   # //          })
+///           .on_termination(|ctx: HandlerContext<Terminated>|{
+///                println!("on_termination: {:?}", ctx);
+///             })
 ///           .build();
 ///     
 ///       rocket::build().attach(meteoritus)
@@ -141,6 +143,7 @@ use crate::{
 ///   ```
 #[derive(Clone)]
 pub struct Meteoritus<P: Phase> {
+    auto_terminate: bool,
     base_route: &'static str,
     max_size: ByteUnit,
     vault: Arc<dyn Vault>,
@@ -153,7 +156,8 @@ pub struct Meteoritus<P: Phase> {
     >,
     on_created: Option<Arc<dyn Fn(HandlerContext<Created>) + Send + Sync>>,
     on_completed: Option<Arc<dyn Fn(HandlerContext<Completed>) + Send + Sync>>,
-    // on_termination: Option<Arc<dyn Fn() + Send + Sync>>,
+    on_termination:
+        Option<Arc<dyn Fn(HandlerContext<Terminated>) + Send + Sync>>,
     state: std::marker::PhantomData<P>,
 }
 
@@ -167,7 +171,7 @@ impl<P: Phase> Meteoritus<P> {
     }
 
     pub fn get_protocol_extensions(&self) -> MeteoritusHeaders {
-        MeteoritusHeaders::Extensions(&["creation"])
+        MeteoritusHeaders::Extensions(&["creation", "termination"])
     }
 
     pub fn get_protocol_max_size(&self) -> MeteoritusHeaders {
@@ -179,13 +183,14 @@ impl Meteoritus<Build> {
     /// Returns a instance of [`Meteoritus`] into the _[`Build`]_ phase.
     pub fn new() -> Meteoritus<Build> {
         Meteoritus::<Build> {
+            auto_terminate: true,
             base_route: "/meteoritus",
             max_size: ByteUnit::Megabyte(5),
             vault: Arc::new(LocalVault::new("./tmp/files")),
             on_creation: Default::default(),
             on_created: Default::default(),
             on_completed: Default::default(),
-            // on_termination: Default::default(),
+            on_termination: Default::default(),
             state: PhantomData::<Build>,
         }
     }
@@ -196,6 +201,14 @@ impl Meteoritus<Build> {
             state: std::marker::PhantomData,
             ..self
         }
+    }
+
+    /// Optional configuration that specifies if completed uploads should be keep on disk or deleted.
+    ///
+    /// By default Meteoritus will assumes that an `on_completed` callback has assigned to move uploads to a permanent location and will auto-terminate all completed uploads.
+    pub fn keep_on_disk(mut self) -> Self {
+        self.auto_terminate = false;
+        self
     }
 
     /// Mounts all tus middleware routes in the supplied given `base` path.
@@ -467,6 +480,10 @@ impl Meteoritus<Build> {
     /// is called once a file upload is completed. This allows users of the library to perform
     /// additional actions after the file has been uploaded and processed.
     ///
+    /// At this point is recommended to move uploads to a permanent/secure location, by default Meteoritus
+    /// is configured to auto-terminate after `on_completed` was invoked.
+    /// Consider add [` Meteoritus::keep_on_disk()`] in order to overwrite this.
+    ///
     /// # Examples
     ///   ```rust,no_run
     ///   # #[macro_use] extern crate rocket;
@@ -536,13 +553,51 @@ impl Meteoritus<Build> {
         self
     }
 
-    /* pub fn on_termination<F>(mut self, callback: F) -> Self
+    /// Specifies a callback to be executed after a file has been successfully terminated deleted from disk.
+    ///
+    /// The callback function will be called when a client Termination request occurs. The function
+    /// takes a [`HandlerContext`] parameter that contains information about the file that was deleted from disk.
+    ///
+    /// # Examples
+    ///   ```rust,no_run
+    ///   # #[macro_use] extern crate rocket;
+    ///   use rocket::{Ignite, data::ByteUnit};
+    ///   use meteoritus::{Terminated, HandlerContext, Meteoritus};
+    ///   # pub struct DbService {}
+    ///   #
+    ///   # impl DbService {
+    ///   #     fn new() -> DbService {
+    ///   #         Self {}
+    ///   #     }
+    ///   #
+    ///   #     fn say_hello(&self) {
+    ///   #         println!("Hello from DbService")
+    ///   #     }
+    ///   # }
+    ///
+    ///   #[launch]
+    ///   fn rocket() -> _ {
+    ///       let meteoritus: Meteoritus<Ignite> = Meteoritus::new()
+    ///           .on_termination(|ctx: HandlerContext<Terminated>| {
+    ///               println!("File was terminated by client: {:?}", ctx.file_info);
+    ///
+    ///               // Using rocket instance to get managed services
+    ///               let db_service = ctx.rocket.state::<DbService>().unwrap();
+    ///               db_service.say_hello();
+    ///           })
+    ///           .build();
+    ///     
+    ///       rocket::build().attach(meteoritus)
+    /// }
+    /// ```
+    /// The above example adds a callback function that simply logs the file information after it has been terminated by a client request. Also demonstrates the use of the rocket instance to access managed services.
+    pub fn on_termination<F>(mut self, callback: F) -> Self
     where
-        F: Fn() + Send + Sync + 'static,
+        F: Fn(HandlerContext<Terminated>) + Send + Sync + 'static,
     {
         self.on_termination = Some(Arc::new(callback));
         self
-    } */
+    }
 }
 
 impl Meteoritus<Ignite> {
@@ -554,7 +609,7 @@ impl Meteoritus<Ignite> {
             on_creation: self.on_creation.to_owned(),
             on_created: self.on_created.to_owned(),
             on_completed: self.on_completed.to_owned(),
-            //on_termination: self.on_termination.to_owned(),
+            on_termination: self.on_termination.to_owned(),
             ..*self
         }
     }
@@ -564,6 +619,11 @@ impl Meteoritus<Orbit> {
     /// Returns the `base` route where all tus middleware routes are mounted.
     pub fn base_route(&self) -> &str {
         self.base_route
+    }
+
+    /// Indicates if completed uploads should be auto deleted from disk.
+    pub fn auto_terminate(&self) -> bool {
+        self.auto_terminate
     }
 
     /// Returns the maximum allowed upload size.
@@ -595,11 +655,11 @@ impl Meteoritus<Orbit> {
         &self.on_completed
     }
 
-    /* pub(crate) fn on_termination(
+    pub(crate) fn on_termination(
         &self,
-    ) -> &Option<Arc<dyn Fn() + Send + Sync>> {
+    ) -> &Option<Arc<dyn Fn(HandlerContext<Terminated>) + Send + Sync>> {
         &self.on_termination
-    } */
+    }
 }
 
 #[rocket::async_trait]
@@ -616,7 +676,7 @@ impl Fairing for Meteoritus<Ignite> {
             creation_handler,
             info_handler,
             file_info_handler,
-            // termination_handler,
+            termination_handler,
             upload_handler,
         ];
 

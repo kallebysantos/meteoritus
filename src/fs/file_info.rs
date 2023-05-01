@@ -23,12 +23,17 @@ pub struct Created;
 #[derive(Default, Debug)]
 pub struct Completed;
 
+/// Indicates the [`FileInfo`] `Terminated` state.
+#[derive(Default, Debug)]
+pub struct Terminated;
+
 /// A struct representing a file and its metadata during various stages of processing.
 ///
-/// The struct has four possible states: [`Built`], [`Created`], and [`Completed`].
+/// The struct has four possible states: [`Built`], [`Created`], [`Completed`] and [`Terminated`].
 /// - [`Built`] - The file instances has been built and is ready to create information on disk.
 /// - [`Created`] - The file information has been saved on disk.
 /// - [`Completed`] - The file has been fully processed and is ready to be used.
+/// - [`Terminated`] - The file has been terminated and is no longer saved on disk.
 #[derive(Default, Debug, Serialize, Deserialize)]
 #[serde(crate = "rocket::serde")]
 pub struct FileInfo<State = Building> {
@@ -125,6 +130,17 @@ impl FileInfo<Created> {
 
 impl FileInfo<Completed> {
     /// Returns where the file is located
+    pub fn file_name(&self) -> &String {
+        &self.file_name
+    }
+}
+
+impl FileInfo<Terminated> {
+    pub fn offset(&self) -> &u64 {
+        &self.offset
+    }
+
+    /// Returns where the file was located
     pub fn file_name(&self) -> &String {
         &self.file_name
     }
