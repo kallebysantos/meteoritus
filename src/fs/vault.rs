@@ -6,7 +6,7 @@ use std::{
 };
 
 use super::{
-    file_info::{Built, Completed, Created, FileInfo},
+    file_info::{Built, Completed, Created, FileInfo, Terminated},
     metadata::Metadata,
 };
 
@@ -47,7 +47,10 @@ pub trait Vault: Send + Sync {
         offset: u64,
     ) -> Result<PatchOption, VaultError>;
 
-    fn terminate_file(&self, file_id: &str) -> Result<(), VaultError>;
+    fn terminate_file(
+        &self,
+        file_id: &str,
+    ) -> Result<FileInfo<Terminated>, VaultError>;
 }
 
 pub struct LocalVault {
@@ -204,10 +207,17 @@ impl Vault for LocalVault {
         }
     }
 
-    fn terminate_file(&self, file_id: &str) -> Result<(), VaultError> {
+    fn terminate_file(
+        &self,
+        file_id: &str,
+    ) -> Result<FileInfo<Terminated>, VaultError> {
+        let file_info = self.read_file::<Terminated>(file_id)?;
+
         let file_dir = Path::new(self.save_path).join(file_id);
 
         fs::remove_dir_all(file_dir)
-            .map_err(|e| VaultError::TerminationError(e.into()))
+            .map_err(|e| VaultError::TerminationError(e.into()))?;
+
+        Ok(file_info)
     }
 }

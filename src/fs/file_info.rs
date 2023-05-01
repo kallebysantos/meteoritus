@@ -23,6 +23,10 @@ pub struct Created;
 #[derive(Default, Debug)]
 pub struct Completed;
 
+/// Indicates the [`FileInfo`] `Terminated` state.
+#[derive(Default, Debug)]
+pub struct Terminated;
+
 /// A struct representing a file and its metadata during various stages of processing.
 ///
 /// The struct has four possible states: [`Built`], [`Created`], and [`Completed`].
@@ -125,6 +129,17 @@ impl FileInfo<Created> {
 
 impl FileInfo<Completed> {
     /// Returns where the file is located
+    pub fn file_name(&self) -> &String {
+        &self.file_name
+    }
+}
+
+impl FileInfo<Terminated> {
+    pub fn offset(&self) -> &u64 {
+        &self.offset
+    }
+
+    /// Returns where the file was located
     pub fn file_name(&self) -> &String {
         &self.file_name
     }
