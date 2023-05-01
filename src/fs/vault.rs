@@ -58,6 +58,25 @@ impl LocalVault {
     pub fn new(save_path: &'static str) -> Self {
         Self { save_path }
     }
+
+    fn read_file<State>(
+        &self,
+        file_id: &str,
+    ) -> Result<FileInfo<State>, VaultError> {
+        let file_dir = Path::new(self.save_path).join(file_id);
+
+        let info_path = file_dir.join("info").with_extension("json");
+
+        let file = match File::open(info_path) {
+            Ok(file) => file,
+            Err(e) => return Err(VaultError::ReadError(e.into())),
+        };
+
+        let reader = BufReader::new(file);
+
+        serde_json::from_reader(reader)
+            .map_err(|e| VaultError::ReadError(e.into()))
+    }
 }
 
 impl Vault for LocalVault {
@@ -139,19 +158,7 @@ impl Vault for LocalVault {
     }
 
     fn get_file(&self, file_id: &str) -> Result<FileInfo<Created>, VaultError> {
-        let file_dir = Path::new(self.save_path).join(file_id);
-
-        let info_path = file_dir.join("info").with_extension("json");
-
-        let file = match File::open(info_path) {
-            Ok(file) => file,
-            Err(e) => return Err(VaultError::ReadError(e.into())),
-        };
-
-        let reader = BufReader::new(file);
-
-        serde_json::from_reader(reader)
-            .map_err(|e| VaultError::ReadError(e.into()))
+        self.read_file(file_id)
     }
 
     fn patch_file(
