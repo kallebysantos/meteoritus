@@ -7,8 +7,7 @@ use rocket::{
 };
 
 use crate::handlers::{
-    creation_handler, file_info_handler,
-    info_handler, /* termination_handler, */
+    creation_handler, file_info_handler, info_handler, termination_handler,
     upload_handler,
 };
 
@@ -131,9 +130,9 @@ use crate::{
 ///           .on_completed(|ctx: HandlerContext<Completed>| {
 ///                println!("on_completed: {:?}", ctx);
 ///            })
-///   # //        .on_termination(||{
-///   # //             println!("File deleted!");
-///   # //          })
+///           .on_termination(||{
+///                println!("File deleted!");
+///             })
 ///           .build();
 ///     
 ///       rocket::build().attach(meteoritus)
@@ -153,7 +152,7 @@ pub struct Meteoritus<P: Phase> {
     >,
     on_created: Option<Arc<dyn Fn(HandlerContext<Created>) + Send + Sync>>,
     on_completed: Option<Arc<dyn Fn(HandlerContext<Completed>) + Send + Sync>>,
-    // on_termination: Option<Arc<dyn Fn() + Send + Sync>>,
+    on_termination: Option<Arc<dyn Fn() + Send + Sync>>,
     state: std::marker::PhantomData<P>,
 }
 
@@ -167,7 +166,7 @@ impl<P: Phase> Meteoritus<P> {
     }
 
     pub fn get_protocol_extensions(&self) -> MeteoritusHeaders {
-        MeteoritusHeaders::Extensions(&["creation"])
+        MeteoritusHeaders::Extensions(&["creation", "termination"])
     }
 
     pub fn get_protocol_max_size(&self) -> MeteoritusHeaders {
@@ -185,7 +184,7 @@ impl Meteoritus<Build> {
             on_creation: Default::default(),
             on_created: Default::default(),
             on_completed: Default::default(),
-            // on_termination: Default::default(),
+            on_termination: Default::default(),
             state: PhantomData::<Build>,
         }
     }
@@ -536,13 +535,13 @@ impl Meteoritus<Build> {
         self
     }
 
-    /* pub fn on_termination<F>(mut self, callback: F) -> Self
+    pub fn on_termination<F>(mut self, callback: F) -> Self
     where
         F: Fn() + Send + Sync + 'static,
     {
         self.on_termination = Some(Arc::new(callback));
         self
-    } */
+    }
 }
 
 impl Meteoritus<Ignite> {
@@ -554,7 +553,7 @@ impl Meteoritus<Ignite> {
             on_creation: self.on_creation.to_owned(),
             on_created: self.on_created.to_owned(),
             on_completed: self.on_completed.to_owned(),
-            //on_termination: self.on_termination.to_owned(),
+            on_termination: self.on_termination.to_owned(),
             ..*self
         }
     }
@@ -595,11 +594,11 @@ impl Meteoritus<Orbit> {
         &self.on_completed
     }
 
-    /* pub(crate) fn on_termination(
+    pub(crate) fn on_termination(
         &self,
     ) -> &Option<Arc<dyn Fn() + Send + Sync>> {
         &self.on_termination
-    } */
+    }
 }
 
 #[rocket::async_trait]
@@ -616,7 +615,7 @@ impl Fairing for Meteoritus<Ignite> {
             creation_handler,
             info_handler,
             file_info_handler,
-            // termination_handler,
+            termination_handler,
             upload_handler,
         ];
 
