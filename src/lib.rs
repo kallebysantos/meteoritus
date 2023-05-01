@@ -50,6 +50,9 @@
 //!           .on_completed(|ctx| {
 //!                println!("on_completed: {:?}", ctx);
 //!            })
+//!           .on_termination(|ctx| {
+//!                println!("on_termination: {:?}", ctx);
+//!            })
 //!         .build();
 //!
 //!     rocket::build()
@@ -76,9 +79,6 @@ pub use crate::fs::{
     Built, Completed, Created, FileInfo, Metadata, MetadataError, Terminated,
     Vault,
 };
-
-/* mod comet_vault;
-pub use crate::comet_vault::{CometFile, CometVault}; */
 
 mod handlers;
 pub use crate::handlers::HandlerContext;

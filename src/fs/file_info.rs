@@ -29,10 +29,11 @@ pub struct Terminated;
 
 /// A struct representing a file and its metadata during various stages of processing.
 ///
-/// The struct has four possible states: [`Built`], [`Created`], and [`Completed`].
+/// The struct has four possible states: [`Built`], [`Created`], [`Completed`] and [`Terminated`].
 /// - [`Built`] - The file instances has been built and is ready to create information on disk.
 /// - [`Created`] - The file information has been saved on disk.
 /// - [`Completed`] - The file has been fully processed and is ready to be used.
+/// - [`Terminated`] - The file has been terminated and is no longer saved on disk.
 #[derive(Default, Debug, Serialize, Deserialize)]
 #[serde(crate = "rocket::serde")]
 pub struct FileInfo<State = Building> {
