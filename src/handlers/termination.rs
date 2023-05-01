@@ -2,27 +2,51 @@ use std::sync::Arc;
 
 use rocket::{
     http::Status,
+    outcome::Outcome,
+    request::{self, FromRequest},
     response::{self, Responder},
-    Orbit, Request, State,
+    Orbit, Request, Rocket, State,
 };
 
-use crate::{Meteoritus, Vault};
+use crate::{HandlerContext, Meteoritus, Vault};
 
 #[delete("/<id>")]
 pub fn termination_handler(
     id: &str,
+    req: TerminationRequest,
     vault: &State<Arc<dyn Vault>>,
     meteoritus: &State<Meteoritus<Orbit>>,
 ) -> TerminationResponder {
     match vault.terminate_file(id) {
         Err(_) => TerminationResponder::Failure,
-        Ok(_) => {
+        Ok(file) => {
             if let Some(callback) = &meteoritus.on_termination() {
-                callback();
+                callback(HandlerContext {
+                    rocket: req.rocket,
+                    file_info: &file,
+                });
             }
 
             TerminationResponder::Success
         }
+    }
+}
+
+#[derive(Debug)]
+pub struct TerminationRequest<'r> {
+    rocket: &'r Rocket<Orbit>,
+}
+
+#[rocket::async_trait]
+impl<'r> FromRequest<'r> for TerminationRequest<'r> {
+    type Error = &'static str;
+
+    async fn from_request(
+        req: &'r Request<'_>,
+    ) -> request::Outcome<Self, Self::Error> {
+        Outcome::Success(TerminationRequest {
+            rocket: req.rocket(),
+        })
     }
 }
 

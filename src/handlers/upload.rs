@@ -41,6 +41,10 @@ pub async fn upload_handler(
                 });
             };
 
+            if let Err(_) = vault.terminate_file(id) {
+                return UploadResponder::Failure(Status::InternalServerError);
+            };
+
             *file.length()
         }
     };

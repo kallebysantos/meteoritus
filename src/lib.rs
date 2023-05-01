@@ -73,7 +73,8 @@ pub use crate::meteoritus::Meteoritus;
 
 mod fs;
 pub use crate::fs::{
-    Built, Completed, Created, FileInfo, Metadata, MetadataError, Vault,
+    Built, Completed, Created, FileInfo, Metadata, MetadataError, Terminated,
+    Vault,
 };
 
 /* mod comet_vault;

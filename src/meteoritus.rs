@@ -6,9 +6,12 @@ use rocket::{
     Build, Ignite, Orbit, Phase, Rocket,
 };
 
-use crate::handlers::{
-    creation_handler, file_info_handler, info_handler, termination_handler,
-    upload_handler,
+use crate::{
+    fs::Terminated,
+    handlers::{
+        creation_handler, file_info_handler, info_handler, termination_handler,
+        upload_handler,
+    },
 };
 
 #[allow(unused_imports)]
@@ -152,7 +155,8 @@ pub struct Meteoritus<P: Phase> {
     >,
     on_created: Option<Arc<dyn Fn(HandlerContext<Created>) + Send + Sync>>,
     on_completed: Option<Arc<dyn Fn(HandlerContext<Completed>) + Send + Sync>>,
-    on_termination: Option<Arc<dyn Fn() + Send + Sync>>,
+    on_termination:
+        Option<Arc<dyn Fn(HandlerContext<Terminated>) + Send + Sync>>,
     state: std::marker::PhantomData<P>,
 }
 
@@ -537,7 +541,7 @@ impl Meteoritus<Build> {
 
     pub fn on_termination<F>(mut self, callback: F) -> Self
     where
-        F: Fn() + Send + Sync + 'static,
+        F: Fn(HandlerContext<Terminated>) + Send + Sync + 'static,
     {
         self.on_termination = Some(Arc::new(callback));
         self
@@ -596,7 +600,7 @@ impl Meteoritus<Orbit> {
 
     pub(crate) fn on_termination(
         &self,
-    ) -> &Option<Arc<dyn Fn() + Send + Sync>> {
+    ) -> &Option<Arc<dyn Fn(HandlerContext<Terminated>) + Send + Sync>> {
         &self.on_termination
     }
 }
