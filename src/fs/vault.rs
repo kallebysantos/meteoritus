@@ -121,7 +121,12 @@ impl Vault for LocalVault {
         let file_name = file_dir.join("file");
 
         /* Creating file for upload */
-        if let Err(e) = match File::create_new(&file_name) {
+        if let Err(e) = match File::options()
+            .read(true)
+            .write(true)
+            .create_new(true)
+            .open(&file_name)
+        {
             Ok(file) => file.set_len(*file_info.length()).map_err(|e| e.into()),
             Err(e) => Err(e.into()),
         } {
@@ -131,21 +136,24 @@ impl Vault for LocalVault {
         /* Retrieving disk file_name as &str */
         let Some(file_name) = file_name.as_path().to_str() else {
             return Err(VaultError::CreationError(Box::new(
-                std::io::Error::from(ErrorKind::InvalidFilename),
+                std::io::Error::from(ErrorKind::InvalidInput), // ErrorKind::InvalidFilename
             )))
         };
 
         let file_info = file_info.mark_as_created(file_name);
 
         /* Storing file info */
-        if let Err(e) =
-            match File::create_new(file_dir.join("info").with_extension("json"))
-            {
-                Ok(info) => serde_json::to_writer(info, &file_info)
-                    .map_err(|e| e.into()),
-                Err(e) => Err(e.into()),
-            }
+        if let Err(e) = match File::options()
+            .read(true)
+            .write(true)
+            .create_new(true)
+            .open(file_dir.join("info").with_extension("json"))
         {
+            Ok(info) => {
+                serde_json::to_writer(info, &file_info).map_err(|e| e.into())
+            }
+            Err(e) => Err(e.into()),
+        } {
             return Err(VaultError::CreationError(e));
         };
 
