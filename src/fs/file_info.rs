@@ -86,8 +86,17 @@ impl FileInfo<Building> {
     pub(super) fn build(self) -> FileInfo<Built> {
         FileInfo::<Built> {
             state: std::marker::PhantomData,
-            ..self
+            id: self.id,
+            length: self.length,
+            offset: self.offset,
+            metadata: self.metadata,
+            file_name: self.file_name,
         }
+        /* Consider Update to: #![feature(type_changing_struct_update)]
+        FileInfo::<Built> {
+            state: std::marker::PhantomData,
+            ..self
+        } */
     }
 }
 
@@ -96,8 +105,17 @@ impl FileInfo<Built> {
         FileInfo::<Created> {
             file_name: file_name.to_string(),
             state: std::marker::PhantomData,
-            ..self
+            id: self.id,
+            length: self.length,
+            offset: self.offset,
+            metadata: self.metadata,
         }
+        /* Consider Update to: #![feature(type_changing_struct_update)]
+        FileInfo::<Created> {
+            file_name: file_name.to_string(),
+            state: std::marker::PhantomData,
+            ..self
+        } */
     }
 }
 
@@ -123,8 +141,17 @@ impl FileInfo<Created> {
 
         Some(FileInfo::<Completed> {
             state: std::marker::PhantomData,
-            ..self
+            id: self.id,
+            length: self.length,
+            offset: self.offset,
+            metadata: self.metadata,
+            file_name: self.file_name,
         })
+        /* Consider Update to: #![feature(type_changing_struct_update)]
+        Some(FileInfo::<Completed> {
+            state: std::marker::PhantomData,
+            ..self
+        }) */
     }
 }
 

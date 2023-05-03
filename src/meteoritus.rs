@@ -199,8 +199,20 @@ impl Meteoritus<Build> {
     pub fn build(self) -> Meteoritus<Ignite> {
         Meteoritus::<Ignite> {
             state: std::marker::PhantomData,
-            ..self
+            auto_terminate: self.auto_terminate,
+            base_route: self.base_route,
+            max_size: self.max_size,
+            vault: self.vault,
+            on_creation: self.on_creation,
+            on_created: self.on_created,
+            on_completed: self.on_completed,
+            on_termination: self.on_termination,
         }
+        /*  Consider Update to: #![feature(type_changing_struct_update)]
+        Meteoritus::<Ignite> {
+            state: std::marker::PhantomData,
+            ..self
+        } */
     }
 
     /// Optional configuration that specifies if completed uploads should be keep on disk or deleted.
@@ -605,13 +617,25 @@ impl Meteoritus<Ignite> {
     pub(crate) fn launch(&self) -> Meteoritus<Orbit> {
         Meteoritus::<Orbit> {
             state: std::marker::PhantomData,
+            auto_terminate: self.auto_terminate,
+            base_route: self.base_route,
+            max_size: self.max_size,
+            vault: self.vault.to_owned(),
+            on_creation: self.on_creation.to_owned(),
+            on_created: self.on_created.to_owned(),
+            on_completed: self.on_completed.to_owned(),
+            on_termination: self.on_termination.to_owned(),
+        }
+        /*  Consider Update to: #![feature(type_changing_struct_update)]
+        Meteoritus::<Orbit> {
+            state: std::marker::PhantomData,
             vault: self.vault.to_owned(),
             on_creation: self.on_creation.to_owned(),
             on_created: self.on_created.to_owned(),
             on_completed: self.on_completed.to_owned(),
             on_termination: self.on_termination.to_owned(),
             ..*self
-        }
+        } */
     }
 }
 

@@ -4,7 +4,6 @@
 #![doc(
     html_favicon_url = "https://github.com/kallebysantos/meteoritus/raw/main/assets/favicon.ico"
 )]
-#![feature(type_changing_struct_update)]
 //!  # Meteoritus - API Documentation
 //!
 //! Hello, and welcome to the Meteoritus API documentation!
