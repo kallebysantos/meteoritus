@@ -5,9 +5,9 @@
 * Added [Termination extension](https://tus.io/protocols/resumable-upload.html#termination) functionality.
 
     This extension defines a way for the Client to terminate completed and unfinished uploads allowing the Server to free up used resources.
-    Available from [`on_termination()`]() option.
+    Available from [`on_termination()`](https://docs.rs/meteoritus/0.2.0/meteoritus/struct.Meteoritus.html#method.on_termination) option.
 
-* Added [`keep_on_disk()`]() option.
+* Added [`keep_on_disk()`](https://docs.rs/meteoritus/0.2.0/meteoritus/struct.Meteoritus.html#method.keep_on_disk) option.
 
     From now all completed uploads resources will be deleted from Server, this option specifies that theses temp files should be kept on disk.
 
