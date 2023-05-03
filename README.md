@@ -29,7 +29,7 @@ Meteoritus is a `Fairing` that implements tus protocol on top of [`Rocket`](http
 ```toml
 [dependencies]
 rocket = "0.5.0-rc.2"
-meteoritus = "0.1.0"
+meteoritus = "0.2.0"
 ```
 
 Then attach `Meteoritus` to your `Rocket` server on launch:
@@ -46,7 +46,7 @@ fn hello() -> &'static str {
 
 #[launch]
 fn rocket() -> _ {
-    let meteoritus = Meteoritus::new()
+let meteoritus = Meteoritus::new()
         .mount_to("/api/files")
         .with_temp_path("./tmp/uploads")
         .with_max_size(ByteUnit::Gibibyte(1))
@@ -60,7 +60,11 @@ fn rocket() -> _ {
           .on_completed(|ctx| {
                println!("on_completed: {:?}", ctx);
            })
+          .on_termination(|ctx| {
+               println!("on_termination: {:?}", ctx);
+           })
         .build();
+    
     rocket::build()
         .attach(meteoritus)
         .mount("/", routes![hello])

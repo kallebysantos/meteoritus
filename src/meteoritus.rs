@@ -215,7 +215,7 @@ impl Meteoritus<Build> {
         } */
     }
 
-    /// Optional configuration that specifies if completed uploads should be keep on disk or deleted.
+    /// Optional configuration that specifies if completed uploads should be kept on disk or deleted.
     ///
     /// By default Meteoritus will assumes that an `on_completed` callback has assigned to move uploads to a permanent location and will auto-terminate all completed uploads.
     pub fn keep_on_disk(mut self) -> Self {

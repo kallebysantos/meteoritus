@@ -16,7 +16,7 @@
 //! ```toml
 //! [dependencies]
 //! rocket = "0.5.0-rc.2"
-//! meteoritus = "0.1.0"
+//! meteoritus = "0.2.0"
 //! ```
 //!
 //! Then attach [`Meteoritus`] to your [`Rocket`] server on launch:
