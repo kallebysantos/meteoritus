@@ -136,7 +136,7 @@ impl Vault for LocalVault {
         /* Retrieving disk file_name as &str */
         let Some(file_name) = file_name.as_path().to_str() else {
             return Err(VaultError::CreationError(Box::new(
-                std::io::Error::from(ErrorKind::InvalidFilename),
+                std::io::Error::from(ErrorKind::InvalidInput), // ErrorKind::InvalidFilename
             )))
         };
 
