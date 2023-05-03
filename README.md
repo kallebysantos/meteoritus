@@ -5,6 +5,10 @@
 <h1 align="center">Meteoritus</h1>
 
 <div align="center">
+<a href="https://github.com/kallebysantos/meteoritus/actions/workflows/build-and-test.yml" align="center">
+    <img alt="CI Build and test" src="https://github.com/kallebysantos/meteoritus/actions/workflows/build-and-test.yml/badge.svg">
+</a>
+
 <a href="https://docs.rs/meteoritus" align="center">
     <img alt="docs.rs" src="https://img.shields.io/docsrs/meteoritus">
 </a>
@@ -26,6 +30,7 @@
 ### Getting started:
 Meteoritus is a `Fairing` that implements tus protocol on top of [`Rocket`](https://rocket.rs) framework, so in order to use it you'll need the following dependencies in `Cargo.toml`:
 
+#### Current version v0.2.0 [See changelog]()
 ```toml
 [dependencies]
 rocket = "0.5.0-rc.2"
@@ -70,5 +75,4 @@ let meteoritus = Meteoritus::new()
         .mount("/", routes![hello])
 }
 ```
-
 For more detailed information check out the complete [Api documentation](https://docs.rs/meteoritus/).
