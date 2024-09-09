@@ -93,7 +93,7 @@ impl<'r> FromRequest<'r> for CreationRequest<'r> {
         if tus_resumable_header.is_none()
             || tus_resumable_header.unwrap() != "1.0.0"
         {
-            return Outcome::Failure((
+            return Outcome::Error((
                 Status::BadRequest,
                 "Missing or invalid Tus-Resumable header",
             ));
@@ -103,14 +103,14 @@ impl<'r> FromRequest<'r> for CreationRequest<'r> {
             Some(value) => match value.parse::<u64>() {
                 Ok(value) => value,
                 Err(_) => {
-                    return Outcome::Failure((
+                    return Outcome::Error((
                         Status::BadRequest,
                         "Invalid Upload-Length header",
                     ))
                 }
             },
             None => {
-                return Outcome::Failure((
+                return Outcome::Error((
                     Status::BadRequest,
                     "Missing Upload-Length header",
                 ))
@@ -118,7 +118,7 @@ impl<'r> FromRequest<'r> for CreationRequest<'r> {
         };
 
         if upload_length > meteoritus.max_size().as_u64() {
-            return Outcome::Failure((
+            return Outcome::Error((
                 Status::PayloadTooLarge,
                 "Upload-Length exceeds the Tus-Max-Size",
             ));
