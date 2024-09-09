@@ -30,11 +30,11 @@
 ### Getting started:
 Meteoritus is a `Fairing` that implements tus protocol on top of [`Rocket`](https://rocket.rs) framework, so in order to use it you'll need the following dependencies in `Cargo.toml`:
 
-#### Current version v0.2.0 [See changelog](https://github.com/kallebysantos/meteoritus/blob/main/CHANGELOG.md)
+#### Current version v0.2.1 [See changelog](https://github.com/kallebysantos/meteoritus/blob/main/CHANGELOG.md)
 ```toml
 [dependencies]
-rocket = "0.5.0-rc.2"
-meteoritus = "0.2.0"
+rocket = "0.5.1"
+meteoritus = "0.2.1"
 ```
 
 Then attach `Meteoritus` to your `Rocket` server on launch:
