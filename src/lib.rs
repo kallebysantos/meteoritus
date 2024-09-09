@@ -15,8 +15,8 @@
 //!
 //! ```toml
 //! [dependencies]
-//! rocket = "0.5.0-rc.2"
-//! meteoritus = "0.2.0"
+//! rocket = "0.5.1"
+//! meteoritus = "0.2.1"
 //! ```
 //!
 //! Then attach [`Meteoritus`] to your [`Rocket`] server on launch:
@@ -57,8 +57,8 @@
 //!         .mount("/", routes![hello])
 //! }
 //! ```
-//! [`Rocket`]: https://api.rocket.rs/v0.5-rc/rocket/index.html
-//! [`Fairing`]: https://api.rocket.rs/v0.5-rc/rocket/fairing/index.html
+//! [`Rocket`]: https://api.rocket.rs/v0.5/rocket/index.html
+//! [`Fairing`]: https://api.rocket.rs/v0.5/rocket/fairing/index.html
 
 /// These are public dependencies! Update docs if these are changed, especially
 /// figment's version number in docs.
