@@ -1,3 +1,9 @@
+# Version 0.2.1 (Sep 9, 2024)
+
+## General Improvements
+
+  * Update `rocket` dependency from ``v0.5.0-rc.2` to `v0.5.1`.
+
 # Version 0.2.0 (May 3, 2023)
 
 ## Major Features and Improvements
